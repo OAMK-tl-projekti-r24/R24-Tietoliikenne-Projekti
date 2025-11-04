@@ -1,6 +1,6 @@
 # Telecommunications project, Group 24
 
-This repository contains the documentation and source code for the telecommunications project of Group 24 (Autumn 2025, Oulu University of Applied Sciences
+This repository contains the documentation and source code for the telecommunications project of Group 24 (Autumn 2025, Oulu University of Applied Sciences)
 
 ## System components
 
@@ -21,7 +21,6 @@ The project consists of the following software/hardware components:
 
 ## System Diagram
 
-<System Diagram here>
 
 ## Credits
 
