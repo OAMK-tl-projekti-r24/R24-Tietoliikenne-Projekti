@@ -42,7 +42,8 @@ iptables -A INPUT -p ALL -j DROP
 iptables -P INPUT ACCEPT
 iptables -P OUTPUT ACCEPT
 iptables -P FORWARD DROP
-
+#ICMP traffic block
+sudo iptables -A INPUT -p icmp --icmp-type 8 -j DROP
 #
 # IPv6 (same logic as with IPv4)
 #
