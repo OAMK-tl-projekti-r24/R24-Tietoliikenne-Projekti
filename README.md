@@ -8,11 +8,12 @@ The project consists of the following software/hardware components:
 
     - Nordic Semiconductor nRF5340-DK (Bluetooth Low Energy Development Kit)
     - Raspberry Pi 3B+
+    - Linux Ubuntu Server
 
 ## Features
 
-    - Transmission/reception of gyroscope data over BLE (TODO)
-    - Analysis of received gyroscope data with K-means clustering (TODO)
+    - Transmission/reception of gyroscope data over BLE
+    - Analysis of received gyroscope data with K-means clustering
     - Graphical User Interface (GUI)
 
 ## Dependencies
@@ -20,7 +21,7 @@ The project consists of the following software/hardware components:
     - nRF SDK
 
 ## System Diagram
-
+<img width="461" height="361" alt="arkkitehtuuri drawio" src="https://github.com/user-attachments/assets/ffa42283-0bc4-4cc4-8abd-dc9d42797c38" />
 
 ## Credits
 
