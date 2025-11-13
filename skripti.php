@@ -1,4 +1,5 @@
 <?php
+
 $servername = "172.20.241.9";
 $username = "dbaccess_rw"; // katso discordin pinned-viesteistä
 $password = "fasdjkf2389vw2c3k234vk2f3"; // katso discordin pinned-viesteistä
@@ -16,9 +17,13 @@ $result = $conn->query($sql);
 
 if ($result->num_rows > 0) {
    while($row = $result->fetch_assoc()) {
-      echo "Time: " . $row["timestamp"] . " - Sensor A: " . $row["sensorvalue_a"] . " - Sensor B: " . $row["sensorvalue_b"]. " - Sensor C: " . $row["sensorvalue_c"]. " - Sensor D " . $row["sensorvalue_d"]. " - Sensor E: " . $row["sensorvalue_e"]. " - Sensor F: " . $row["sensorvalue_f"] ."<br>" ;   }
+     echo "Time: " . $row["timestamp"] . " - Sensor A: " . $row["sensorvalue_a"] . " - Sensor B: " . $row["sensorvalue_b"]. " - Sensor C: " . $row["sensorvalue_c"]. " - Sensor D: " . $row["sensorvalue_d"]. "<br>";
+   }
 }
-
+else
+{
+echo"No results";
+}
 $conn->close();
 
 ?>
