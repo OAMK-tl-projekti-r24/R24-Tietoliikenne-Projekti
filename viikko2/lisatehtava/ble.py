@@ -85,6 +85,7 @@ async def main():
         #print("X:", x_values)
         #print("Y:", y_values)
         #print("Z:", z_values)
+        print(np.count_nonzero(x_values))
         print(indication_values) # Lähinnä debuggausta varten
 asyncio.run(main())
 
