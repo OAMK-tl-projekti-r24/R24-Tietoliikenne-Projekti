@@ -6,6 +6,9 @@ $password = "fasdjkf2389vw2c3k234vk2f3"; // katso discordin pinned-viesteistä
 $dbname = "measurements";
 $groupid = 24; // oma groupid
 
+date_default_timezone_set('Europe/Helsinki');
+echo date(DATE_RFC2822) . "<br>";
+
 $conn = new mysqli($servername, $username, $password, $dbname);
 
 if ($conn->connect_error) {
