@@ -17,6 +17,14 @@ static const struct {
 };
 
 
+static const struct {
+    const uint8_t config;
+    const uint8_t smp_rate;
+} init = {
+    .config = 0x1a,
+    .smp_rate = 0x19,
+};
+
 
 
 
