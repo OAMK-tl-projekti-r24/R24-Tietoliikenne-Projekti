@@ -75,7 +75,7 @@ bool mpu6050_init(const struct i2c_dt_spec *target_node)
     }
 
     
-    printk("The full scale range is ± %i ° / s\n", 250*(fssel_selection+1));
+    printk("The full scale range is ±%i°/s\n", 250*(fssel_selection+1));
     if((config_data & 0x07) != 0)
     {
         printk("The sample rate is %i Hz\n", (8000/(1+smprt_div[1]))); // TODO: Check config bits for DLPF and change base sample rate based on it.
