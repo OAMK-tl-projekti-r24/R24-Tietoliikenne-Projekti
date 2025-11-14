@@ -22,9 +22,21 @@ static const struct {
 static const struct {
     const uint8_t config;
     const uint8_t smp_rate;
+    const uint8_t power;
 } init_addr = {
     .config = 0x1a,
     .smp_rate = 0x19,
+    .power = 0x6B
+};
+
+static const struct {
+    const uint8_t gx;
+    const uint8_t gy;
+    const uint8_t gz;
+} read_addr = {
+    .gx = 0x43,
+    .gy = 0x45,
+    .gz = 0x47
 };
 
 struct Measurement
@@ -39,6 +51,9 @@ struct Measurement
 
 /*Check I2C bus availability and check device availability by reading WHO_AM_I*/
 bool mpu6050_init(const struct i2c_dt_spec *target_node);
+
+/* Read Gyroscope values */
+struct Measurement readGyro(const struct i2c_dt_spec *target_node);
 
 /* Read self-test registers for gyroscope bits */
 bool mpu6050_gyro_test(const struct i2c_dt_spec *target_node);

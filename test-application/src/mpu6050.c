@@ -7,11 +7,13 @@ bool mpu6050_init(const struct i2c_dt_spec *target_node)
     uint8_t smprate_data;
     uint8_t fssel_data;
     uint8_t fssel_input;
+    uint8_t power_state;
     uint8_t fssel_options[3] = {0x00,0x08,0x10,0x18};
     uint8_t fssel_selection = 0;
     uint8_t smprt_div[2] = {init_addr.smp_rate,1}; // Divider for sample rate, sample rate calculated with (8KHz|1KHz)/(1+smprt_div)
     uint8_t config[2] = {init_addr.config,0x00}; // Configuration, enable/disable CLPF/External Frame Sync
     uint8_t fs_sel[2] = {selftest_addr.gyro_config,fssel_input}; 
+    uint8_t power[2] = {init_addr.power,0x00};
 
     printk("Initializing MPU6050 driver\n");
     if (!device_is_ready(target_node->bus)) {
@@ -65,6 +67,13 @@ bool mpu6050_init(const struct i2c_dt_spec *target_node)
         return false;
     }
 
+    int res_power = i2c_write_read_dt(target_node, power, sizeof(power), &power_state, 1);
+    if(res_power != 0 && power_state != power[0])
+    {
+	    printk("Failed to write full scale range");
+        return false;
+    }
+
     
     printk("The full scale range is ± %i ° / s\n", 250*(fssel_selection+1));
     if((config_data & 0x07) != 0)
@@ -83,7 +92,22 @@ bool mpu6050_init(const struct i2c_dt_spec *target_node)
 
 struct Measurement readGyro(const struct i2c_dt_spec *target_node)
 {
+    struct Measurement m;
+    uint8_t buf[6];
 
+    int ret = i2c_burst_read_dt(target_node, read_addr.gx, buf, 6);
+    if (ret != 0)
+    {
+        printk("Failed to read gyroscope values\n");
+        m.x = m.y = m.z = 0;
+        return m;
+    }
+
+    m.x = (buf[0] << 8) | buf[1];
+    m.y = (buf[2] << 8) | buf[3];
+    m.z = (buf[4] << 8) | buf[5];
+
+    return m;
 }
 
 
