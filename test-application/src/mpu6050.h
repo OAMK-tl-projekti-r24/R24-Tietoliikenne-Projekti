@@ -10,19 +10,28 @@ static const struct {
     const uint8_t x;
     const uint8_t y;
     const uint8_t z;
-} selftest = {
+    const uint8_t gyro_config;
+} selftest_addr = {
     .x = 0x0D,
     .y = 0x0E,
-    .z = 0x0F
+    .z = 0x0F,
+    .gyro_config = 0x1B
 };
 
 
 static const struct {
     const uint8_t config;
     const uint8_t smp_rate;
-} init = {
+} init_addr = {
     .config = 0x1a,
     .smp_rate = 0x19,
+};
+
+struct Measurement
+{
+   uint16_t x;
+   uint16_t y;
+   uint16_t z;
 };
 
 
