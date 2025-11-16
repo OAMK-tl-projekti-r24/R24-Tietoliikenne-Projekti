@@ -1,5 +1,5 @@
 #include <zephyr/drivers/i2c.h>
-#include <stdbool.h>
+#include <zephyr/logging/log.h>
 
 #define MPU6050_ADDR 0x68
 #define MPU6050_WHOAMI 0x75
@@ -45,8 +45,6 @@ struct Measurement
    uint16_t y;
    uint16_t z;
 };
-
-
 
 
 /*Check I2C bus availability and check device availability by reading WHO_AM_I*/

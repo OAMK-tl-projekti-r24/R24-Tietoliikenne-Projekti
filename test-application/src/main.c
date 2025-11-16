@@ -10,7 +10,7 @@
 #define I2C1_NODE DT_NODELABEL(mpu6050)
 static const struct i2c_dt_spec dev_i2c1 = I2C_DT_SPEC_GET(I2C1_NODE);
 
-LOG_MODULE_REGISTER(foo);
+LOG_MODULE_REGISTER(testapp);
 
 int main(void)
 {

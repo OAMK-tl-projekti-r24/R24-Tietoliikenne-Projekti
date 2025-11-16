@@ -1,6 +1,8 @@
 #include "bluetooth.h"
-static bool notify_gyro_enabled = false;
 
+LOG_MODULE_DECLARE(testapp);
+
+static bool notify_gyro_enabled = false;
 
 /* Callback function for client subscribing/removing subscription */
 static void gyro_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value)
@@ -50,15 +52,15 @@ int my_ble_send_gyro(uint16_t val)
 static void on_connected(struct bt_conn *conn, uint8_t err)
 {
     if (err) {
-        printk("BLE: Failed to connect (%u)\n", err);
+        LOG_ERR("BLE: Failed to connect (%u)\n", err);
     } else {
-        printk("BLE: Connected\n");
+        LOG_INF("BLE: Connected\n");
     }
 }
 
 static void on_disconnected(struct bt_conn *conn, uint8_t reason)
 {
-    printk("BLE: Disconnected (reason %u)\n", reason);
+    LOG_INF("BLE: Disconnected (reason %u)\n", reason);
 }
 
 BT_CONN_CB_DEFINE(conn_callbacks) = {
@@ -68,22 +70,23 @@ BT_CONN_CB_DEFINE(conn_callbacks) = {
 
 int my_ble_init(void)
 {
+    printk("BLE initializing\n");
+
     int err = bt_enable(NULL);
     if (err) {
-        printk("BLE init failed (%d)\n", err);
+        LOG_ERR("BLE init failed (%d)\n", err);
         return err;
     }
-
-    printk("BLE initialized\n");
 
     /* Start ADV_CONN */
     err = bt_le_adv_start(BT_LE_ADV_CONN_NAME, NULL, 0, NULL, 0);
     if (err) {
-        printk("Advertising failed (%d)\n", err);
+        LOG_ERR("Advertising failed (%d)\n", err);
         return err;
     }
 
-    printk("Advertising started\n");
+    LOG_INF("Advertising started\n");
+    printk("BLE initialized\n");
 
     return 0;
 }
