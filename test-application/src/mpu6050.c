@@ -10,12 +10,12 @@ bool mpu6050_init(const struct i2c_dt_spec *target_node)
     uint8_t fssel_data;
     uint8_t fssel_input;
     uint8_t power_state;
-    uint8_t fssel_options[3] = {0x00,0x08,0x10,0x18};
+    uint8_t fssel_options[4] = {0x00,0x08,0x10,0x18};
     uint8_t fssel_selection = 0;
-    uint8_t smprt_div[2] = {init_addr.smp_rate,1}; // Divider for sample rate, sample rate calculated with (8KHz|1KHz)/(1+smprt_div)
-    uint8_t config[2] = {init_addr.config,0x00}; // Configuration, enable/disable CLPF/External Frame Sync
+    uint8_t smprt_div[2] = {init.smp_rate,1}; // Divider for sample rate, sample rate calculated with (8KHz|1KHz)/(1+smprt_div)
+    uint8_t config[2] = {init.config,0x00}; // Configuration, enable/disable CLPF/External Frame Sync
     uint8_t fs_sel[2] = {selftest_addr.gyro_config,fssel_input}; 
-    uint8_t power[2] = {init_addr.power,0x00};
+    uint8_t power[2] = {init.power,0x00};
 
     printk("Initializing MPU6050 driver\n");
     if (!device_is_ready(target_node->bus)) {
