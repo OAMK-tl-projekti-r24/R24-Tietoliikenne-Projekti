@@ -1,5 +1,6 @@
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/logging/log.h>
+#include "measurement.h"
 
 #define MPU6050_ADDR 0x68
 #define MPU6050_WHOAMI 0x75
@@ -37,13 +38,6 @@ static const struct {
     .gx = 0x43,
     .gy = 0x45,
     .gz = 0x47
-};
-
-struct Measurement
-{
-   uint16_t x;
-   uint16_t y;
-   uint16_t z;
 };
 
 

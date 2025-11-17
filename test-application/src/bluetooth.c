@@ -38,7 +38,7 @@ BT_GATT_SERVICE_DEFINE(gyro_svc,
 );
 
 
-int my_ble_send_gyro(uint16_t val)
+int my_ble_send_gyro(struct Measurement val)
 {
     if (!notify_gyro_enabled) {
         return -EACCES;
