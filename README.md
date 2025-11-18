@@ -21,6 +21,7 @@ The project consists of the following software/hardware components:
     - nRF SDK
 
 ## System Diagram
+
 <img width="461" height="361" alt="arkkitehtuuri drawio" src="arkkitehtuurikuva.png" />
 
 ## Credits
