@@ -6,6 +6,7 @@
 #include <zephyr/bluetooth/conn.h>
 #include <zephyr/logging/log.h>
 #include "measurement.h"
+#include <zephyr/sys/byteorder.h>
 
 int my_ble_init(void);
 int my_ble_send_gyro(struct Measurement val);

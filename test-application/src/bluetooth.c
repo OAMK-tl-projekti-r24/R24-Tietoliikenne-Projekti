@@ -44,6 +44,12 @@ int my_ble_send_gyro(struct Measurement val)
         return -EACCES;
     }
 
+
+    /* Convert to Big-Endian (values make more sense)*/
+    val.x = sys_cpu_to_be16(val.x);
+    val.y = sys_cpu_to_be16(val.y);
+    val.z = sys_cpu_to_be16(val.z);
+
     return bt_gatt_notify(NULL, &gyro_svc.attrs[1], &val, sizeof(val));
 }
 
