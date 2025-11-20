@@ -131,7 +131,7 @@ bool mpu6050_gyro_test(const struct i2c_dt_spec *target_node)
     uint8_t test_bits[3];
     uint8_t raw_bits[3];
     
-    /* Write*/
+    /* Enable test mode*/
     int res_test = i2c_write_read_dt(target_node, test_config, sizeof(test_config), &config_write, 1);
     if(res_test != 0 && config_write != test_config[1])
     {
@@ -148,6 +148,7 @@ bool mpu6050_gyro_test(const struct i2c_dt_spec *target_node)
         raw_bits[i] = raw_bits[i] & 0x1f; // Discard first three bits
         LOG_INF("MPU6050 Gyroscope self-test register %c = 0x%x\n", names[i], raw_bits[i]);
     }
+    /* Disable test mode */
     test_config[1] = (fssel_input &= ~0xE6);
     int res_notest = i2c_write_read_dt(target_node, test_config, sizeof(test_config), &config_write, 1);
     if(res_notest != 0 && config_write != test_config[1])

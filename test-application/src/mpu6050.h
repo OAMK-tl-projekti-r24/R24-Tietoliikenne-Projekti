@@ -44,8 +44,8 @@ static const struct
 {
     .config = {0x1a,0x00}, // Configuration, enable/disable CLPF/External Frame Sync
     .smp_rate = {0x19,1}, // Divider for sample rate, sample rate calculated with (8KHz|1KHz)/(1+smp_rate)
-    .fssel_options = {0x00,0x08,0x10,0x18}, //
-    .power = {0x6B,0x00}
+    .fssel_options = {0x00,0x08,0x10,0x18}, // Options for setting Full Scale Range bits
+    .power = {0x6B,0x00} // Register address and value for power state (0x00 for on)
 };
 
 /* Registers to be read outside of init and/or testing */
