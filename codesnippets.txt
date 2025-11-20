@@ -1,0 +1,11 @@
+cataas rajapinnasta 404 Error kuva
+
+{
+/etc/apache2/sites-available$/000-default.conf
+ErrorDocument 404 /404.php
+
+<?php
+echo "Error 404<br>";
+echo '<img src="https://cataas.com/cat" alt="Image">';
+?>
+}
