@@ -7,38 +7,55 @@
 #define MPU6050_WHOAMI 0x75
 
 /* Self-test registers */
-static const struct {
+static const struct 
+{
     const uint8_t x;
     const uint8_t y;
     const uint8_t z;
     const uint8_t gyro_config;
     const uint8_t accel_config;
-} selftest_addr = {
+} selftest_addr = 
+{
     .x = 0x0D,
     .y = 0x0E,
-    .z = 0x0F,
+    .z = 0x0F
+};
+
+
+/* Used for registers and values used by multiple portions of the software*/
+static const struct 
+{
+    const uint8_t gyro_config;
+    const uint8_t accel_config;
+} shared = 
+{
     .gyro_config = 0x1B,
     .accel_config = 0x1C
 };
 
-
-static const struct {
-    const uint8_t config;
+/* Registers and values used during initialization*/
+static const struct 
+{
+    const uint8_t config[2];
     const uint8_t smp_rate[2];
     const uint8_t fssel_options[4];
-    const uint8_t power;
-} init = {
-    .config = 0x1a,
-    .smp_rate = {0x19,1},
-    .fssel_options = {0x00,0x08,0x10,0x18},
-    .power = 0x6B
+    const uint8_t power[2];
+} init = 
+{
+    .config = {0x1a,0x00}, // Configuration, enable/disable CLPF/External Frame Sync
+    .smp_rate = {0x19,1}, // Divider for sample rate, sample rate calculated with (8KHz|1KHz)/(1+smp_rate)
+    .fssel_options = {0x00,0x08,0x10,0x18}, //
+    .power = {0x6B,0x00}
 };
 
-static const struct {
+/* Registers to be read outside of init and/or testing */
+static const struct 
+{
     const uint8_t gx;
     const uint8_t gy;
     const uint8_t gz;
-} read_addr = {
+} read_addr = 
+{
     .gx = 0x43,
     .gy = 0x45,
     .gz = 0x47

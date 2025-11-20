@@ -54,5 +54,8 @@ dkms.conf
 # debug information files
 *.dwo
 
+# VSCode directories
+**/.vscode
+
 # Build directories
 **/build
