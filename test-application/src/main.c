@@ -35,12 +35,14 @@ int main(void)
         return 1;
         }
 
+
+        
         while(1)
         {
                 struct Measurement m = readGyro(&dev_i2c1);
-                printk("Gyro X: %d, Gyro Y: %d, Gyro Z: %d\n", m.x, m.y, m.z);
+                LOG_INF("Gyro X: %d, Gyro Y: %d, Gyro Z: %d\n", m.x, m.y, m.z);
                 my_ble_send_gyro(m);
-                k_sleep(K_MSEC(1000));
+                k_sleep(K_MSEC(20000));
         }
 
         return 0;
