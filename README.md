@@ -13,8 +13,15 @@ The project consists of the following software/hardware components:
 ## Features
 
     - Transmission/reception of gyroscope data over BLE
+        The nRF device reads data from the gyroscope and transmits it over BLE.
+        The server application receives this data and stores it in the database for further processing.
+
     - Analysis of received gyroscope data with K-means clustering
+
     - Graphical User Interface (GUI)
+        Data is displayed through a web-based GUI hosted by Linux Ubuntu Server via Apache
+        Users can view real-time gyroscope data from a standard web browser.
+
 
 ## Dependencies
 
