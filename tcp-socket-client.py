@@ -21,5 +21,8 @@ dataf = b"".join(text).decode("utf-8")
 
 print(dataf)
 
+with open("tct_sc_data", "w", encoding="utf-8") as f:
+    f.write(dataf)
+
 
 
