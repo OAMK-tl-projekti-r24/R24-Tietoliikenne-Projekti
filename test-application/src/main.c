@@ -1,6 +1,7 @@
 #include <zephyr/kernel.h>
 #include "mpu6050.h"
-#include "bluetooth.h" 
+#include "bluetooth.h"
+#include "button.h" 
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/logging/log.h>
@@ -14,6 +15,13 @@ LOG_MODULE_REGISTER(testapp);
 
 int main(void)
 {
+        
+    gpio_pin_configure_dt(&button1, GPIO_INPUT | GPIO_PULL_UP);
+    gpio_pin_interrupt_configure_dt(&button1, GPIO_INT_EDGE_TO_ACTIVE);
+    gpio_init_callback(&button_cb, update_press, BIT(button1.pin));
+    gpio_add_callback(button1.port, &button_cb);
+
+
 
         if (!mpu6050_init(&dev_i2c1)) 
         {
@@ -35,14 +43,22 @@ int main(void)
         return 1;
         }
 
+        if (!mpu6050_calculate_accel_offsets(&dev_i2c1)) 
+        {
+        return 1;
+        }
 
-        
+        if (!mpu6050_calculate_gyro_offsets(&dev_i2c1)) 
+        {
+        return 1;
+        }
+
         while(1)
         {
-                struct Measurement m = readGyro(&dev_i2c1);
-                LOG_INF("Gyro X: %d, Gyro Y: %d, Gyro Z: %d\n", m.x, m.y, m.z);
-                my_ble_send_gyro(m);
-                k_sleep(K_MSEC(25));
+                struct Accel m = readAccelFIFO(&dev_i2c1);
+                printk("Accel X: %f, Accel Y: %f, Accel Z: %f\n", m.x, m.y, m.z);
+                my_ble_send_accel(m);
+                k_sleep(K_MSEC(2000));
         }
 
         return 0;

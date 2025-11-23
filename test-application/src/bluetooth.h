@@ -10,5 +10,7 @@
 
 int my_ble_init(void);
 int my_ble_send_gyro(struct Measurement val);
+int my_ble_send_accel(struct Accel val);
+int my_ble_send_button(uint8_t value);
 
 #endif

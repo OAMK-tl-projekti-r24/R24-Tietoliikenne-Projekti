@@ -1,10 +1,21 @@
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/drivers/gpio.h>
 #include <math.h>
 #include "measurement.h"
 
 #define MPU6050_ADDR 0x68
 #define MPU6050_WHOAMI 0x75
+
+static const struct gpio_dt_spec led0 = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
+static const struct gpio_dt_spec led1 = GPIO_DT_SPEC_GET(DT_ALIAS(led1), gpios);
+
+
+#define MPU6050_FIFO_EN      0x23
+#define MPU6050_USER_CTRL    0x6A
+#define MPU6050_FIFO_R_W     0x74
+#define MPU6050_FIFO_COUNTH  0x72
+#define MPU6050_FIFO_COUNTL  0x73
 
 /* Self-test registers */
 static const struct 
@@ -73,3 +84,11 @@ bool mpu6050_gyro_test(const struct i2c_dt_spec *target_node);
 
 /* Read self-test registers for accelometer bits */
 bool mpu6050_accel_test(const struct i2c_dt_spec *target_node);
+
+
+struct Accel readAccelFIFO(const struct i2c_dt_spec *node);
+
+/* Calibrate the MPU6050 gyroscope by calculating mean and writing to offset registers*/
+bool mpu6050_calculate_gyro_offsets(const struct i2c_dt_spec *target_node);
+
+bool mpu6050_calculate_accel_offsets(const struct i2c_dt_spec *target_node);

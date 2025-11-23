@@ -3,6 +3,8 @@
 LOG_MODULE_DECLARE(testapp);
 
 uint8_t fssel_input;
+int16_t gyro_offset_x = 0, gyro_offset_y = 0 , gyro_offset_z = 0;
+int16_t accel_offset_x = 0, accel_offset_y = 0, accel_offset_z = 0;
 
 bool mpu6050_init(const struct i2c_dt_spec *target_node) 
 {
@@ -13,6 +15,10 @@ bool mpu6050_init(const struct i2c_dt_spec *target_node)
     uint8_t power_state; // Used for checking correct write of power state (On)
     uint8_t fssel_selection = 0; // Selection of configuration with index number of fssel_options array
     uint8_t fs_sel[2] = {shared.gyro_config,fssel_input}; 
+
+    /* Configure LED for calibration signaling (led0 for accel, led1 for gyro)*/
+    gpio_pin_configure_dt(&led0, GPIO_OUTPUT_INACTIVE);
+    gpio_pin_configure_dt(&led1, GPIO_OUTPUT_INACTIVE);
 
     /* Check microcontroller I2C bus */
     printk("Initializing MPU6050 driver\n");
@@ -65,12 +71,22 @@ bool mpu6050_init(const struct i2c_dt_spec *target_node)
     }
 
     /* Write Full Scale Range configuration */
-    int res_fssel = i2c_write_read_dt(target_node, fs_sel, sizeof(fs_sel), &fssel_data, 1);
-    if(res_fssel != 0 && fssel_data != fs_sel[0])
+    int res_fssel = i2c_write_read_dt(target_node, shared.gyro_config, 0x00, &fssel_data, 1);
+    if(res_fssel != 0 && fssel_data != 0x00)
     {
 	    LOG_ERR("Failed to write full scale range");
         return false;
     }
+
+
+
+    // Reset FIFO first
+    i2c_reg_write_byte_dt(target_node, MPU6050_USER_CTRL, 0x04); // FIFO_RESET
+    k_sleep(K_MSEC(10)); // short delay
+    // Enable FIFO
+    i2c_reg_write_byte_dt(target_node, MPU6050_USER_CTRL, 0x40); // FIFO_EN only
+    // Enable accel in FIFO
+    i2c_reg_write_byte_dt(target_node, MPU6050_FIFO_EN, 0x78);
 
     /* Wake sensor up from sleep mode */
     int res_power = i2c_write_read_dt(target_node, init.power, sizeof(init.power), &power_state, 1);
@@ -110,13 +126,133 @@ struct Measurement readGyro(const struct i2c_dt_spec *target_node)
         return m;
     }
 
-    m.x = (buf[0] << 8) | buf[1];
-    m.y = (buf[2] << 8) | buf[3];
-    m.z = (buf[4] << 8) | buf[5];
+    int16_t raw_x = (int16_t)((buf[0] << 8) | buf[1]);
+    int16_t raw_y = (int16_t)((buf[2] << 8) | buf[3]);
+    int16_t raw_z = (int16_t)((buf[4] << 8) | buf[5]);
+
+    // Apply software offsets
+    m.x = raw_x - gyro_offset_x;
+    m.y = raw_y - gyro_offset_y;
+    m.z = raw_z - gyro_offset_z;
 
     return m;
 }
 
+struct Accel readAccelFIFO(const struct i2c_dt_spec *node)
+{
+    struct Accel g = {0.0f, 0.0f, 0.0f};
+    uint8_t buf[6];
+    uint8_t fifo_h, fifo_l;
+    uint16_t fifo_count;
+
+    // Read FIFO_COUNT (high + low)
+    if (i2c_reg_read_byte_dt(node, MPU6050_FIFO_COUNTH, &fifo_h) != 0) return g;
+    if (i2c_reg_read_byte_dt(node, MPU6050_FIFO_COUNTL, &fifo_l) != 0) return g;
+    fifo_count = ((uint16_t)fifo_h << 8) | fifo_l;
+
+    if (fifo_count < 6) return g;
+    fifo_count -= fifo_count % 6;
+
+    // Read 6 bytes from FIFO if enough data
+    if (fifo_count >= 6) {
+        if (i2c_burst_read_dt(node, MPU6050_FIFO_R_W, buf, 6) == 0) {
+            int16_t raw_x = (int16_t)((buf[0] << 8) | buf[1]) - accel_offset_x;
+            int16_t raw_y = (int16_t)((buf[2] << 8) | buf[3]) - accel_offset_y;
+            int16_t raw_z = (int16_t)((buf[4] << 8) | buf[5]) - accel_offset_z;
+
+            // Convert to g (FS ±2g -> 1g = 16384)
+            g.x = (float)raw_x / 16384.0f;
+            g.y = (float)raw_y / 16384.0f;
+            g.z = (float)raw_z / 16384.0f;
+        }
+    }
+
+    return g;
+}
+
+bool mpu6050_calculate_gyro_offsets(const struct i2c_dt_spec *target_node)
+{
+    const int samples = 3000;
+    int32_t sum_x = 0, sum_y = 0, sum_z = 0;
+    uint8_t buf[6];
+    int valid_samples = 0;
+
+    printk("Calculating MPU6050 gyro offsets...\n");
+    gpio_pin_toggle_dt(&led1);
+
+    for (int i = 0; i < samples; i++) {
+        if (i2c_burst_read_dt(target_node, 0x43 /* GYRO_XOUT_H */, buf, 6) != 0) {
+            printk("Failed to read gyro sample %d\n", i);
+            k_sleep(K_MSEC(2));
+            continue;
+        }
+
+        sum_x += (int16_t)((buf[0] << 8) | buf[1]);
+        sum_y += (int16_t)((buf[2] << 8) | buf[3]);
+        sum_z += (int16_t)((buf[4] << 8) | buf[5]);
+
+        valid_samples++;
+        k_sleep(K_MSEC(2));
+    }
+
+    if (valid_samples == 0) {
+        printk("No valid gyro samples read\n");
+        return false;
+    }
+
+    gyro_offset_x = sum_x / valid_samples;
+    gyro_offset_y = sum_y / valid_samples;
+    gyro_offset_z = sum_z / valid_samples;
+
+    printk("Gyro offsets calculated: X=%d Y=%d Z=%d\n",
+           gyro_offset_x, gyro_offset_y, gyro_offset_z);
+
+    gpio_pin_toggle_dt(&led1);
+    return true;
+}
+
+bool mpu6050_calculate_accel_offsets(const struct i2c_dt_spec *target_node)
+{
+    const int samples = 3000;
+    int32_t sum_x = 0, sum_y = 0, sum_z = 0;
+    uint8_t buf[6];
+    int valid_samples = 0;
+
+    printk("Calculating MPU6050 accelerometer offsets...\n");
+    gpio_pin_toggle_dt(&led0);
+
+    for (int i = 0; i < samples; i++) {
+        if (i2c_burst_read_dt(target_node, 0x3B /* ACCEL_XOUT_H */, buf, 6) != 0) {
+            printk("Failed to read accel sample %d\n", i);
+            k_sleep(K_MSEC(2));
+            continue;
+        }
+
+        sum_x += (int16_t)((buf[0] << 8) | buf[1]);
+        sum_y += (int16_t)((buf[2] << 8) | buf[3]);
+        sum_z += (int16_t)((buf[4] << 8) | buf[5]);
+
+        valid_samples++;
+        k_sleep(K_MSEC(2));
+    }
+
+    if (valid_samples == 0) {
+        printk("No valid accel samples read\n");
+        return false;
+    }
+
+    accel_offset_x = sum_x / valid_samples;
+    accel_offset_y = sum_y / valid_samples;
+
+    // Adjust Z offset to account for gravity (~1g)
+    accel_offset_z = (sum_z / valid_samples) - 16384; // assuming FS=±2g
+
+    printk("Accel offsets calculated: X=%d Y=%d Z=%d\n",
+           accel_offset_x, accel_offset_y, accel_offset_z);
+
+    gpio_pin_toggle_dt(&led0);       
+    return true;
+}
 
 bool mpu6050_gyro_test(const struct i2c_dt_spec *target_node) 
 {
@@ -178,7 +314,7 @@ bool mpu6050_gyro_test(const struct i2c_dt_spec *target_node)
     LOG_INF("Gyroscope X deviation: %i %, Y deviation: %i %, Z deviation: %i %\n", deviation[0], deviation[1], deviation[2]);
 
     /* Warn user if values under/over tresholds */
-    if(-14>deviation[0]>14 | -14>deviation[1]>14 | -14>deviation[2]>14)
+    if((-14>deviation[0]>14) | (-14>deviation[1]>14) | (-14>deviation[2]>14))
     {
         LOG_WRN("Self-test values exceeded/went under treshold. Please check the sensor");
     }
