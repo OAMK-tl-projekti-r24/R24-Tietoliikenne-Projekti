@@ -146,10 +146,18 @@ int my_ble_init(void)
         return err;
     }
 
-    /* Start ADV_CONN */
-    err = bt_le_adv_start(BT_LE_ADV_CONN_NAME, NULL, 0, NULL, 0);
+
+    static const struct bt_le_adv_param adv_param = {
+        .id = BT_ID_DEFAULT,
+        .interval_min = BT_GAP_ADV_FAST_INT_MIN_2,
+        .interval_max = BT_GAP_ADV_FAST_INT_MAX_2,
+        .options = BT_LE_ADV_OPT_USE_NAME| BT_LE_ADV_OPT_CONNECTABLE,  // only non-deprecated options
+    };
+
+    /* Start advertising with your struct */
+    err = bt_le_adv_start(&adv_param, NULL, 0, NULL, 0);
     if (err) {
-        LOG_ERR("Advertising failed (%d)\n", err);
+        LOG_ERR("Advertising failed (%d)", err);
         return err;
     }
 

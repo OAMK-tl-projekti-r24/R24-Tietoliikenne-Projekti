@@ -1,3 +1,6 @@
+#ifndef MPU6050_H
+#define MPU6050_H
+
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/gpio.h>
@@ -11,11 +14,7 @@ static const struct gpio_dt_spec led0 = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
 static const struct gpio_dt_spec led1 = GPIO_DT_SPEC_GET(DT_ALIAS(led1), gpios);
 
 
-#define MPU6050_FIFO_EN      0x23
-#define MPU6050_USER_CTRL    0x6A
 #define MPU6050_FIFO_R_W     0x74
-#define MPU6050_FIFO_COUNTH  0x72
-#define MPU6050_FIFO_COUNTL  0x73
 
 /* Self-test registers */
 static const struct 
@@ -51,12 +50,16 @@ static const struct
     const uint8_t smp_rate[2];
     const uint8_t fssel_options[4];
     const uint8_t power[2];
+    const uint8_t fifoen[2];
+    const uint8_t fifo_usrctrl;
 } init = 
 {
     .config = {0x1a,0x00}, // Configuration, enable/disable CLPF/External Frame Sync
     .smp_rate = {0x19,1}, // Divider for sample rate, sample rate calculated with (8KHz|1KHz)/(1+smp_rate)
     .fssel_options = {0x00,0x08,0x10,0x18}, // Options for setting Full Scale Range bits
-    .power = {0x6B,0x00} // Register address and value for power state (0x00 for on)
+    .power = {0x6B,0x00}, // Register address and value for power state (0x00 for on)
+    .fifoen = {0x23, 0x78}, 
+    .fifo_usrctrl = 0x6a
 };
 
 /* Registers to be read outside of init and/or testing */
@@ -65,11 +68,17 @@ static const struct
     const uint8_t gx;
     const uint8_t gy;
     const uint8_t gz;
+    const uint8_t fifo_counth;
+    const uint8_t fifo_countl;
+    const uint8_t fifo_rw;
 } read_addr = 
 {
     .gx = 0x43,
     .gy = 0x45,
-    .gz = 0x47
+    .gz = 0x47,
+    .fifo_counth = 0x72,
+    .fifo_countl = 0x73,
+    .fifo_rw = 0x74
 };
 
 
@@ -92,3 +101,5 @@ struct Accel readAccelFIFO(const struct i2c_dt_spec *node);
 bool mpu6050_calculate_gyro_offsets(const struct i2c_dt_spec *target_node);
 
 bool mpu6050_calculate_accel_offsets(const struct i2c_dt_spec *target_node);
+
+#endif

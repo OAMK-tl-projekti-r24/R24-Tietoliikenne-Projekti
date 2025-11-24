@@ -15,7 +15,7 @@ LOG_MODULE_REGISTER(testapp);
 
 int main(void)
 {
-        
+
     gpio_pin_configure_dt(&button1, GPIO_INPUT | GPIO_PULL_UP);
     gpio_pin_interrupt_configure_dt(&button1, GPIO_INT_EDGE_TO_ACTIVE);
     gpio_init_callback(&button_cb, update_press, BIT(button1.pin));
@@ -38,11 +38,6 @@ int main(void)
                 return 1;
         }
 
-        if (my_ble_init() != 0) 
-        {
-        return 1;
-        }
-
         if (!mpu6050_calculate_accel_offsets(&dev_i2c1)) 
         {
         return 1;
@@ -53,12 +48,17 @@ int main(void)
         return 1;
         }
 
+        if (my_ble_init() != 0) 
+        {
+        return 1;
+        }
+
         while(1)
         {
                 struct Accel m = readAccelFIFO(&dev_i2c1);
                 printk("Accel X: %f, Accel Y: %f, Accel Z: %f\n", m.x, m.y, m.z);
                 my_ble_send_accel(m);
-                k_sleep(K_MSEC(2000));
+                k_sleep(K_MSEC(50));
         }
 
         return 0;
