@@ -35,17 +35,26 @@ bool mpu6050_init(const struct i2c_dt_spec *target_node)
         return false;
     }
 
+
+        /* Wake sensor up from sleep mode */
+    int res_power = i2c_reg_write_byte_dt(target_node, init.power[0], init.power[1]);
+    if(res_power != 0)
+    {
+	    LOG_ERR("Failed to power up");
+        return false;
+    }
+
     /* Write CLPF/External Frame Sync configuration */
-    int res_config = i2c_write_read_dt(target_node, init.config, sizeof(init.config), &config_data, 1);
-    if(res_config != 0 && config_data != init.config[0])
+    int res_config = i2c_reg_write_byte_dt(target_node, init.config[0], init.config[1]);
+    if(res_config != 0)
     {
 	LOG_ERR("Failed to write configuration");
     return false;
     }
 
     /* Write sample rate divider */
-    int res_smprate = i2c_write_read_dt(target_node, init.smp_rate, sizeof(init.smp_rate), &smprate_data, 1);
-    if(res_smprate!= 0 && smprate_data != init.smp_rate[1])
+    int res_smprate = i2c_reg_write_byte_dt(target_node, init.smp_rate[0], init.smp_rate[1]);
+    if(res_smprate!= 0)
     {
 	LOG_ERR("Failed to write sample rate divider");
     return false;
@@ -71,8 +80,8 @@ bool mpu6050_init(const struct i2c_dt_spec *target_node)
     }
 
     /* Write Full Scale Range configuration */
-    int res_fssel = i2c_write_read_dt(target_node, shared.gyro_config, 0x00, &fssel_data, 1);
-    if(res_fssel != 0 && fssel_data != 0x00)
+    int res_fssel = i2c_reg_write_byte_dt(target_node, shared.gyro_config, fssel_input);
+    if(res_fssel != 0)
     {
 	    LOG_ERR("Failed to write full scale range");
         return false;
@@ -88,13 +97,6 @@ bool mpu6050_init(const struct i2c_dt_spec *target_node)
     // Enable accel in FIFO
     i2c_reg_write_byte_dt(target_node, MPU6050_FIFO_EN, 0x78);
 
-    /* Wake sensor up from sleep mode */
-    int res_power = i2c_write_read_dt(target_node, init.power, sizeof(init.power), &power_state, 1);
-    if(res_power != 0 && power_state != init.power[0])
-    {
-	    LOG_ERR("Failed to power up");
-        return false;
-    }
 
     /* Log written configuration */
     LOG_INF("The full scale range is ±%i°/s\n", 250*(fssel_selection+1));
@@ -268,8 +270,8 @@ bool mpu6050_gyro_test(const struct i2c_dt_spec *target_node)
     uint8_t raw_bits[3];
     
     /* Enable test mode*/
-    int res_test = i2c_write_read_dt(target_node, test_config, sizeof(test_config), &config_write, 1);
-    if(res_test != 0 && config_write != test_config[1])
+    int res_test = i2c_reg_write_byte_dt(target_node, test_config[0], test_config[1]);
+    if(res_test != 0)
     {
 	    LOG_ERR("Failed to enable tests!");
         return false;
@@ -285,9 +287,9 @@ bool mpu6050_gyro_test(const struct i2c_dt_spec *target_node)
         LOG_INF("MPU6050 Gyroscope self-test register %c = 0x%x\n", names[i], raw_bits[i]);
     }
     /* Disable test mode */
-    test_config[1] = (fssel_input &= ~0xE6);
-    int res_notest = i2c_write_read_dt(target_node, test_config, sizeof(test_config), &config_write, 1);
-    if(res_notest != 0 && config_write != test_config[1])
+    test_config[1] = fssel_input & ~0xE6;
+    int res_notest = i2c_reg_write_byte_dt(target_node, test_config[0], test_config[1]);
+    if(res_notest != 0)
     {
 	    LOG_ERR("Failed to disable tests!");
         return false;
@@ -336,8 +338,8 @@ bool mpu6050_accel_test(const struct i2c_dt_spec *target_node)
     uint8_t test_bits[3];
     uint8_t raw_bits[3];
     
-    int res_test = i2c_write_read_dt(target_node, test_config, sizeof(test_config), &config_write, 1);
-    if(res_test != 0 && config_write != test_config[1])
+    int res_test = i2c_reg_write_byte_dt(target_node, test_config[0], test_config[1]);
+    if(res_test != 0)
     {
 	    LOG_ERR("Failed to enable tests!");
         return false;
@@ -362,9 +364,9 @@ bool mpu6050_accel_test(const struct i2c_dt_spec *target_node)
         LOG_INF("MPU6050 Accelometer self-test register %c = 0x%x\n", names[i], raw_bits[i]);
     }
     memset(extra_bits, 0, sizeof(extra_bits)); // Empty extra bit array
-    test_config[1] = (fssel_input &= ~0xE6);
-    int res_notest = i2c_write_read_dt(target_node, test_config, sizeof(test_config), &config_write, 1);
-    if(res_notest != 0 && config_write != test_config[1])
+    test_config[1] = fssel_input & ~0xE6;
+    int res_notest = i2c_reg_write_byte_dt(target_node, test_config[0], test_config[1]);
+    if(res_notest != 0)
     {
 	    LOG_ERR("Failed to disable tests!");
         return false;
