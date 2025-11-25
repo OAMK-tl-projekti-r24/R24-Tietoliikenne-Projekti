@@ -129,7 +129,7 @@ struct Measurement readGyro(const struct i2c_dt_spec *target_node)
     struct Measurement m;
     uint8_t buf[6];
 
-    /* Read register values (TODO FIFO buffer) */
+    /* Read register values */
     int ret = i2c_burst_read_dt(target_node, read_addr.gx, buf, 6);
     if (ret != 0)
     {
@@ -193,7 +193,7 @@ bool mpu6050_calculate_gyro_offsets(const struct i2c_dt_spec *target_node)
     gpio_pin_toggle_dt(&led1);
 
     for (int i = 0; i < samples; i++) {
-        if (i2c_burst_read_dt(target_node, 0x43 /* GYRO_XOUT_H */, buf, 6) != 0) {
+        if (i2c_burst_read_dt(target_node, 0x43, buf, 6) != 0) {
             LOG_ERR("Failed to read gyro sample %d\n", i);
             k_sleep(K_MSEC(2));
             continue;
@@ -237,7 +237,7 @@ bool mpu6050_calculate_accel_offsets(const struct i2c_dt_spec *target_node)
 
     /* Take samples */
     for (int i = 0; i < samples; i++) {
-        if (i2c_burst_read_dt(target_node, 0x3B /* ACCEL_XOUT_H */, buf, 6) != 0) {
+        if (i2c_burst_read_dt(target_node, 0x3B, buf, 6) != 0) {
             LOG_ERR("Failed to read accel sample %d\n", i);
             k_sleep(K_MSEC(2));
             continue;

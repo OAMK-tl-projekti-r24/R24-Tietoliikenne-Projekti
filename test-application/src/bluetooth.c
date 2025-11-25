@@ -28,15 +28,13 @@ static struct bt_uuid_128 button_char_uuid    = BT_UUID_INIT_128(BT_UUID_BUTTON_
 
 
 
-/* */
+/* Uint16 values for characteristics */
 static uint16_t gyro_value = 0;
 static uint16_t accel_value = 0;
 static uint16_t button_value = 0;
 
-/* -------------------------------------------------------------------------- */
-/*  GATT Service                                                               */
-/* -------------------------------------------------------------------------- */
 
+/* GATT service definition and characteristic definitions */
 BT_GATT_SERVICE_DEFINE(my_svc,
     BT_GATT_PRIMARY_SERVICE(&gyro_service_uuid),
 
@@ -146,15 +144,15 @@ int my_ble_init(void)
         return err;
     }
 
-
+    /* Connectable BLE GATT parameters */
     static const struct bt_le_adv_param adv_param = {
         .id = BT_ID_DEFAULT,
         .interval_min = BT_GAP_ADV_FAST_INT_MIN_2,
         .interval_max = BT_GAP_ADV_FAST_INT_MAX_2,
-        .options = BT_LE_ADV_OPT_USE_NAME| BT_LE_ADV_OPT_CONNECTABLE,  // only non-deprecated options
+        .options = BT_LE_ADV_OPT_USE_NAME| BT_LE_ADV_OPT_CONNECTABLE,  
     };
 
-    /* Start advertising with your struct */
+    /* Start advertising with aforementioned parameters */
     err = bt_le_adv_start(&adv_param, NULL, 0, NULL, 0);
     if (err) {
         LOG_ERR("Advertising failed (%d)", err);

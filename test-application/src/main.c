@@ -11,7 +11,42 @@
 #define I2C1_NODE DT_NODELABEL(mpu6050)
 static const struct i2c_dt_spec dev_i2c1 = I2C_DT_SPEC_GET(I2C1_NODE);
 
+#define STACKSIZE 2048
+#define PRIORITY 5
+static struct k_work adv_work;
+
+K_THREAD_STACK_DEFINE(send_data_stack, STACKSIZE);
+static struct k_thread send_data_thread_id;
+
 LOG_MODULE_REGISTER(testapp);
+
+
+static void adv_work_handler(struct k_work *work)
+{
+        if (my_ble_init() != 0) 
+        {
+        return;
+        }
+}
+
+static void advertising_start(void)
+{
+	k_work_submit(&adv_work);
+}
+
+void send_data_thread(void)
+{
+        while(1)
+        {
+                struct Accel g = readAccelFIFO(&dev_i2c1);
+                struct Measurement m = readGyro(&dev_i2c1);
+                printk("Accel X: %f, Accel Y: %f, Accel Z: %f\n", g.x, g.y, g.z);
+                my_ble_send_accel(g);
+                my_ble_send_gyro(m);
+                k_sleep(K_MSEC(50));
+        }
+}
+
 
 int main(void)
 {
@@ -47,7 +82,19 @@ int main(void)
         {
         return 1;
         }
+        
+        
+        k_work_init(&adv_work, adv_work_handler);
+	advertising_start();
 
+        k_thread_create(&send_data_thread_id,
+                    send_data_stack,
+                    STACKSIZE,
+                    send_data_thread,
+                    NULL, NULL, NULL,
+                    PRIORITY, 0, K_NO_WAIT);
+
+        /*
         if (my_ble_init() != 0) 
         {
         return 1;
@@ -62,4 +109,6 @@ int main(void)
         }
 
         return 0;
+        */
 }
+
