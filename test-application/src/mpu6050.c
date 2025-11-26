@@ -123,29 +123,6 @@ bool mpu6050_init(const struct i2c_dt_spec *target_node)
     return true;
 }
 
-int readAccelFIFO_Burst(const struct i2c_dt_spec *node, uint8_t *out, int max_samples)
-{
-    uint8_t fifo_h, fifo_l;
-    i2c_reg_read_byte_dt(node, read_addr.fifo_counth, &fifo_h);
-    i2c_reg_read_byte_dt(node, read_addr.fifo_countl, &fifo_l);
-
-    int fifo_count = ((uint16_t)fifo_h << 8) | fifo_l;
-    fifo_count -= fifo_count % 6;  // align to sample size
-
-    int samples_available = fifo_count / 6;
-    if (samples_available == 0) return 0;
-
-    if (samples_available > max_samples)
-        samples_available = max_samples;
-
-    int read_len = samples_available * 6;
-
-    if (i2c_burst_read_dt(node, read_addr.fifo_rw, out, read_len) != 0)
-        return 0;
-
-    return samples_available;
-}
-
 struct Measurement readGyro(const struct i2c_dt_spec *target_node)
 {
     struct Measurement m;

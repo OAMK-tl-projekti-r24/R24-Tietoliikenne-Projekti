@@ -92,11 +92,10 @@ bool mpu6050_gyro_test(const struct i2c_dt_spec *target_node);
 /* Read self-test registers for accelometer bits */
 bool mpu6050_accel_test(const struct i2c_dt_spec *target_node);
 
-int readAccelFIFO_Burst(const struct i2c_dt_spec *node, uint8_t *out, int max_samples);
-
 /* Read Gyroscope values */
 struct Measurement readGyro(const struct i2c_dt_spec *target_node);
 
+/* Read Accelometer values from FIFO buffer */
 struct Accel readAccelFIFO(const struct i2c_dt_spec *node);
 
 /* Calibrate the MPU6050 gyroscope by calculating mean and writing to offset registers*/

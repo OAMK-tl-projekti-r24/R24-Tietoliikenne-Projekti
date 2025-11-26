@@ -43,7 +43,7 @@ void send_data_thread(void)
                 printk("Accel X: %f, Accel Y: %f, Accel Z: %f\n", g.x, g.y, g.z);
                 my_ble_send_accel(g);
                 my_ble_send_gyro(m);
-                k_sleep(K_MSEC(50));
+                k_sleep(K_MSEC(15));
         }
 }
 
