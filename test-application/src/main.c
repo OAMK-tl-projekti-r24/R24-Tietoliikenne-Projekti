@@ -94,21 +94,5 @@ int main(void)
                     NULL, NULL, NULL,
                     PRIORITY, 0, K_NO_WAIT);
 
-        /*
-        if (my_ble_init() != 0) 
-        {
-        return 1;
-        }
-
-        while(1)
-        {
-                struct Accel m = readAccelFIFO(&dev_i2c1);
-                printk("Accel X: %f, Accel Y: %f, Accel Z: %f\n", m.x, m.y, m.z);
-                my_ble_send_accel(m);
-                k_sleep(K_MSEC(50));
-        }
-
-        return 0;
-        */
 }
 

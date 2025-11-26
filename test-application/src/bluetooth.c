@@ -1,19 +1,12 @@
 #include "bluetooth.h"
+#include "button.h"
 
 LOG_MODULE_DECLARE(testapp);
 
 static bool notify_gyro_enabled = false;
 static bool notify_accel_enabled = false;
 static bool notify_button_enabled = false;
-
-/* Callback function for client subscribing/removing subscription */
-static void gyro_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value)
-{
-    notify_gyro_enabled = (value & BT_GATT_CCC_NOTIFY) != 0;
-    notify_accel_enabled = (value & BT_GATT_CCC_NOTIFY) != 0;
-    notify_button_enabled = (value & BT_GATT_CCC_NOTIFY) != 0;
-}
-
+extern uint8_t counter;
 
 
 #define BT_UUID_SERVICE_VAL  BT_UUID_128_ENCODE(0x12345678,0x1234,0x5678,0x1234,0x56789abcdef0)
@@ -26,12 +19,14 @@ static struct bt_uuid_128 gyro_char_uuid    = BT_UUID_INIT_128(BT_UUID_GYRO_CHAR
 static struct bt_uuid_128 accel_char_uuid    = BT_UUID_INIT_128(BT_UUID_ACCEL_CHAR_VAL);
 static struct bt_uuid_128 button_char_uuid    = BT_UUID_INIT_128(BT_UUID_BUTTON_CHAR_VAL);
 
+static void gyro_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value);
+static void accel_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value);
+static void button_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value);
 
-
-/* Uint16 values for characteristics */
+/* values for characteristics */
 static uint16_t gyro_value = 0;
 static uint16_t accel_value = 0;
-static uint16_t button_value = 0;
+static uint8_t button_value = 0;
 
 
 /* GATT service definition and characteristic definitions */
@@ -57,7 +52,7 @@ BT_GATT_SERVICE_DEFINE(my_svc,
             BT_GATT_PERM_NONE,
             NULL, NULL, &accel_value),
 
-    BT_GATT_CCC(gyro_ccc_cfg_changed,
+    BT_GATT_CCC(accel_ccc_cfg_changed,
             BT_GATT_PERM_READ | BT_GATT_PERM_WRITE),
 
     BT_GATT_DESCRIPTOR(BT_UUID_GATT_CUD,
@@ -70,7 +65,7 @@ BT_GATT_SERVICE_DEFINE(my_svc,
             BT_GATT_PERM_NONE,
             NULL, NULL, &button_value),
 
-    BT_GATT_CCC(gyro_ccc_cfg_changed,
+    BT_GATT_CCC(button_ccc_cfg_changed,
             BT_GATT_PERM_READ | BT_GATT_PERM_WRITE),
 
     BT_GATT_DESCRIPTOR(BT_UUID_GATT_CUD,
@@ -78,8 +73,27 @@ BT_GATT_SERVICE_DEFINE(my_svc,
             NULL, NULL, "Button Data")        
 );
 
+/* Callback functions for client subscribing/removing subscription */
+static void gyro_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value)
+{
+    notify_gyro_enabled = (value & BT_GATT_CCC_NOTIFY) != 0;
+}
 
+static void accel_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value)
+{
+    notify_accel_enabled = (value & BT_GATT_CCC_NOTIFY) != 0;
+}
 
+static void button_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value)
+{
+    notify_button_enabled = (value & BT_GATT_CCC_NOTIFY) != 0;
+    if (notify_button_enabled) {
+        button_value = counter;
+        bt_gatt_notify(NULL, &my_svc.attrs[10], &button_value, sizeof(button_value));
+    }
+}
+
+/* Send Gyroscope values */
 int my_ble_send_gyro(struct Measurement val)
 {
     if (!notify_gyro_enabled) {
@@ -95,7 +109,7 @@ int my_ble_send_gyro(struct Measurement val)
     return bt_gatt_notify(NULL, &my_svc.attrs[2], &val, sizeof(val));
 }
 
-
+/* Send Accelometer values (float, no burst) */
 int my_ble_send_accel(struct Accel val)
 {
     if (!notify_accel_enabled) {
@@ -105,14 +119,16 @@ int my_ble_send_accel(struct Accel val)
     return bt_gatt_notify(NULL, &my_svc.attrs[6], &val, sizeof(val));
 }
 
-
+/* Send button value */
 int my_ble_send_button(uint8_t value)
 {
-    if (!notify_accel_enabled) {
+    if (!notify_button_enabled) {
         return -EACCES;
     }
 
-    return bt_gatt_notify(NULL, &my_svc.attrs[10], &value, sizeof(value));
+    button_value = value;
+
+    return bt_gatt_notify(NULL, &my_svc.attrs[10], &button_value, sizeof(button_value));
 }
 
 static void on_connected(struct bt_conn *conn, uint8_t err)
@@ -161,6 +177,7 @@ int my_ble_init(void)
 
     LOG_INF("Advertising started\n");
     printk("BLE initialized\n");
+
 
     return 0;
 }
