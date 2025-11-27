@@ -1,0 +1,28 @@
+/ {
+    aliases {
+        led0 = &led0;
+        led1 = &led1;
+        button1 = &button1;
+    };
+};
+
+/* Override LED0 definition */
+&led0 {
+    gpios = <&gpio0 28 GPIO_ACTIVE_LOW>;
+};
+&led1 {
+    gpios = <&gpio0 29 GPIO_ACTIVE_LOW>;
+};
+&button1 {
+    gpios = <&gpio0 23 GPIO_ACTIVE_LOW>;
+};
+
+
+&i2c1{
+    mpu6050:mpu6050@68{
+        compatible = "i2c-device";
+        reg = < 0x68 >;
+        status = "okay";
+        label = "MPU6050";
+    };
+};
