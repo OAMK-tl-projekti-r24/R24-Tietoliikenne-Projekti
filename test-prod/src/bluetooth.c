@@ -42,17 +42,6 @@ static void accel_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t valu
 
 
 
-/* Send Accelometer values (burst) */
-int ble_send_accel(struct Data send)
-{
-    if (!notify_accel_enabled)
-    {
-        return -EACCES;
-    }
-
-return bt_gatt_notify(NULL, &my_svc.attrs[2], &send, sizeof(send));
-}
-
 static void on_connected(struct bt_conn *conn, uint8_t err)
 {
     if (err) {

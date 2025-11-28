@@ -8,15 +8,13 @@
 #include "measurement.h"
 #include <zephyr/sys/byteorder.h>
 
-struct Data
-{
+typedef struct __attribute__((packed)) {
     int16_t x;
     int16_t y;
     int16_t z;
     uint8_t button_val;
-};
+} Data;
 
 int my_ble_init(void);
-int ble_send_accel(struct Data send);
 
 #endif
