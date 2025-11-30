@@ -85,7 +85,6 @@ static const struct
 /*Check I2C bus availability and check device availability by reading WHO_AM_I*/
 bool mpu6050_init(const struct i2c_dt_spec *target_node);
 
-
 /* Read self-test registers for gyroscope bits */
 bool mpu6050_gyro_test(const struct i2c_dt_spec *target_node);
 

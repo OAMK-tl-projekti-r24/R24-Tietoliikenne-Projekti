@@ -38,12 +38,21 @@ void send_data_thread(void)
 {
         while(1)
         {
-                struct Accel g = readAccelFIFO(&dev_i2c1);
-                struct Measurement m = readGyro(&dev_i2c1);
-                printk("Accel X: %f, Accel Y: %f, Accel Z: %f\n", g.x, g.y, g.z);
-                my_ble_send_accel(g);
-                my_ble_send_gyro(m);
-                k_sleep(K_MSEC(15));
+        // Read all available accelerometer frames and average them
+        struct Accel accel_data = readAccelFIFO(&dev_i2c1);
+
+        // Read gyroscope once (or implement similar FIFO if needed)
+        struct Measurement gyro_data = readGyro(&dev_i2c1);
+
+        // Print debug info
+        printk("Accel X: %.3f, Y: %.3f, Z: %.3f\n", accel_data.x, accel_data.y, accel_data.z);
+
+        // Send via BLE
+        my_ble_send_accel(accel_data);
+        my_ble_send_gyro(gyro_data);
+
+        // Sleep to control data rate
+        k_sleep(K_MSEC(15));
         }
 }
 
@@ -52,7 +61,8 @@ int main(void)
 {
 
     gpio_pin_configure_dt(&button1, GPIO_INPUT | GPIO_PULL_UP);
-    gpio_pin_interrupt_configure_dt(&button1, GPIO_INT_EDGE_TO_ACTIVE);
+    /* Falling edge interrrupt for */
+    gpio_pin_interrupt_configure_dt(&button1, GPIO_INT_EDGE_FALLING);
     gpio_init_callback(&button_cb, update_press, BIT(button1.pin));
     gpio_add_callback(button1.port, &button_cb);
 

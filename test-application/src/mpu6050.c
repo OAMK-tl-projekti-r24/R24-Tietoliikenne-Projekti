@@ -89,23 +89,49 @@ bool mpu6050_init(const struct i2c_dt_spec *target_node)
     res = i2c_reg_write_byte_dt(target_node, fs_sel[0], fs_sel[1]);
     if(res != 0)
     {
-	    LOG_ERR("Failed to write full scale range");
+	    LOG_ERR("Failed to write Gyroscope full scale range");
+        return false;
+    }
+
+        /* Write Accelometer Full Scale Range configuration */
+    res = i2c_reg_write_byte_dt(target_node, shared.accel_config, 0x00);
+    if(res != 0)
+    {
+	    LOG_ERR("Failed to write Accelometer full scale range");
         return false;
     }
 
 
-
-    /* Write FIFO_RESET bit to USER_CTRL */
+    
+    /*
     i2c_reg_write_byte_dt(target_node, init.fifo_usrctrl, 0x04);
-    /* Write FIFO_EN bit to USER_CTRL */
+
     i2c_reg_write_byte_dt(target_node, init.fifo_usrctrl, 0x40); 
-    /* Enable acceleration data in FIFO buffer*/
+
     res = i2c_reg_write_byte_dt(target_node, init.fifoen[0], init.fifoen[1]);
     if(res != 0)
     {
 	    LOG_ERR("Failed to enable FIFO");
         return false;
-    }
+    } */
+
+    // 1. Disable FIFO 
+    i2c_reg_write_byte_dt(target_node, init.fifo_usrctrl, 0x00);
+
+    // 2. Reset FIFO 
+    i2c_reg_write_byte_dt(target_node, init.fifo_usrctrl, 0x04);
+
+    // 3. Enable only accel in FIFO
+    i2c_reg_write_byte_dt(target_node, 0x23, 0x08);     // FIFO_EN = ACCEL
+
+    // 4. Enable FIFO (must OR with reset state)
+    i2c_reg_write_byte_dt(target_node, 0x6A, 0x44);     // USER_CTRL = FIFO_EN | FIFO_RST
+    k_msleep(3);                                        // allow FIFO pipeline fill
+
+    // 5. Finally clear FIFO_RST, keep FIFO_EN
+    i2c_reg_write_byte_dt(target_node, 0x6A, 0x40);     // USER_CTRL = FIFO_EN
+
+    
 
 
     /* Log written configuration */
@@ -151,35 +177,52 @@ struct Measurement readGyro(const struct i2c_dt_spec *target_node)
 
 struct Accel readAccelFIFO(const struct i2c_dt_spec *target_node)
 {
-    struct Accel g = {0.0f, 0.0f, 0.0f};
-    uint8_t buf[6];
-    uint8_t fifo_h, fifo_l;
-    uint16_t fifo_count;
+    /* Initialize accel struct*/
+    struct Accel accel = {0};
 
-    // Read FIFO_COUNT (high + low)
-    if (i2c_reg_read_byte_dt(target_node, read_addr.fifo_counth, &fifo_h) != 0) return g;
-    if (i2c_reg_read_byte_dt(target_node, read_addr.fifo_countl, &fifo_l) != 0) return g;
-    fifo_count = ((uint16_t)fifo_h << 8) | fifo_l;
+    /* Check FIFO register availability */
+    uint8_t fifo_count_h, fifo_count_l;
+    if (i2c_reg_read_byte_dt(target_node, read_addr.fifo_counth, &fifo_count_h) != 0 ||
+        i2c_reg_read_byte_dt(target_node, read_addr.fifo_countl, &fifo_count_l) != 0) {
+        LOG_ERR("Failed to read FIFO count");
+        return accel;
+    }
+    
+    uint16_t fifo_count = ((uint16_t)fifo_count_h << 8) | fifo_count_l;
+    if (fifo_count < 6) return accel;
 
-    if (fifo_count < 6) return g;
-    fifo_count -= fifo_count % 6;
+    int samples = fifo_count / 6;
+    int32_t sum_x = 0, sum_y = 0, sum_z = 0;
 
-    // Read 6 bytes from FIFO if enough data
-    if (fifo_count >= 6) {
-        if (i2c_burst_read_dt(target_node, read_addr.fifo_rw, buf, 6) == 0) {
-            int16_t raw_x = (int16_t)((buf[0] << 8) | buf[1]) - accel_offset_x;
-            int16_t raw_y = (int16_t)((buf[2] << 8) | buf[3]) - accel_offset_y;
-            int16_t raw_z = (int16_t)((buf[4] << 8) | buf[5]) - accel_offset_z;
-
-            // Convert to g (FS ±2g -> 1g = 16384)
-            g.x = (float)raw_x / 16384.0f;
-            g.y = (float)raw_y / 16384.0f;
-            g.z = (float)raw_z / 16384.0f;
+    for (int i = 0; i < samples; i++) {
+        uint8_t fifo_data[6];
+        if (i2c_burst_read_dt(target_node, read_addr.fifo_rw, fifo_data, 6) != 0) {
+            LOG_ERR("Failed to read FIFO sample %d", i);
+            continue;
         }
+
+        int16_t raw_x = (int16_t)((fifo_data[0] << 8) | fifo_data[1]);
+        int16_t raw_y = (int16_t)((fifo_data[2] << 8) | fifo_data[3]);
+        int16_t raw_z = (int16_t)((fifo_data[4] << 8) | fifo_data[5]);
+
+        // Apply zero-g offsets only
+        raw_x -= accel_offset_x;
+        raw_y -= accel_offset_y;
+        raw_z -= accel_offset_z;  
+
+        sum_x += raw_x;
+        sum_y += raw_y;
+        sum_z += raw_z;
     }
 
-    return g;
+    /* Convert raw values with offsets subtracted to G */
+    accel.x = (float)sum_x / (samples * 16384.0f);
+    accel.y = (float)sum_y / (samples * 16384.0f);
+    accel.z = 1.0f + ((float)sum_z / (samples * 16384.0f)); // Add 1g back for gravity
+
+    return accel;
 }
+
 
 bool mpu6050_calculate_gyro_offsets(const struct i2c_dt_spec *target_node)
 {
