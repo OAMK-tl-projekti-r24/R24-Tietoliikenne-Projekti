@@ -24,7 +24,7 @@ The project consists of the following software/hardware components:
 
     - Sensor self-testing
     	The MPU6050 driver has been equipped with sensor self-tests according to the specifications of the manufacturer.
-	In the case of the self-test reporting a deviation of less than -14 percent or over 14 percent from factory trim values, the driver warns the user using the Zephyr WRN_LOG messages.
+	In the case of the self-test reporting a deviation of -14% > deviation > 14% from factory trim values, the driver warns the user using the Zephyr WRN_LOG messages.
 
 
 ## Dependencies
