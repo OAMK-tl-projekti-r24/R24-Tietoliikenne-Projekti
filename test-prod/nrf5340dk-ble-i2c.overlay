@@ -1,10 +1,19 @@
 / {
+    fifoint1: fifoint1 {
+        compatible = "zephyr,gpio";  
+        gpios = <&gpio1 10 GPIO_ACTIVE_LOW>;
+    }; 
+
     aliases {
         led0 = &led0;
         led1 = &led1;
         button1 = &button1;
+        fifoint = &fifoint1;
     };
 };
+
+
+
 
 /* Override LED0 definition */
 &led0 {
