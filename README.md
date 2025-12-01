@@ -30,6 +30,8 @@ The project consists of the following software/hardware components:
 ## Dependencies
 
     - nRF SDK
+    - Apache HTTP server
+    - Bleak BLE library
 
 ## System Diagram
 
