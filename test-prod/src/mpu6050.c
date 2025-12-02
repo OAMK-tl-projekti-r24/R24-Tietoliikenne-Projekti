@@ -1,10 +1,14 @@
 #include "mpu6050.h"
 
+
 LOG_MODULE_DECLARE(testapp);
 
-uint8_t fssel_input;
+uint8_t fssel_input = 0;
+uint8_t accel_input = 0;
 int16_t gyro_offset_x = 0, gyro_offset_y = 0 , gyro_offset_z = 0;
 int16_t accel_offset_x = 0, accel_offset_y = 0, accel_offset_z = 0;
+const struct gpio_dt_spec fifoint = GPIO_DT_SPEC_GET(DT_ALIAS(fifoint), gpios);
+struct gpio_callback fifo_cb;
 
 bool mpu6050_init(const struct i2c_dt_spec *target_node) 
 {
@@ -14,7 +18,7 @@ bool mpu6050_init(const struct i2c_dt_spec *target_node)
     uint8_t fssel_data; // Used to check written fssel configuration
     uint8_t power_state; // Used for checking correct write of power state (On)
     uint8_t fssel_selection = 0; // Selection of configuration with index number of fssel_options array
-    uint8_t fs_sel[2] = {shared.gyro_config,fssel_input}; 
+    uint8_t accel_selection = 0;
     int res;
 
     /* Configure LED for calibration signaling (led0 for accel, led1 for gyro)*/
@@ -27,6 +31,8 @@ bool mpu6050_init(const struct i2c_dt_spec *target_node)
         LOG_ERR("I2C bus not ready\n");
         return false;
     }
+
+    k_msleep(500);
 
     /* Check MPU6050 by reading WHO_AM_I register */
     res = i2c_reg_read_byte_dt(target_node, MPU6050_WHOAMI, &addr_data);
@@ -44,6 +50,9 @@ bool mpu6050_init(const struct i2c_dt_spec *target_node)
 	    LOG_ERR("Failed to power up");
         return false;
     }
+
+    k_msleep(500);
+
     res = i2c_reg_read_byte_dt(target_node, init.power[0], &power_state);
     if(res != 0 || power_state != init.power[1]) {
         LOG_ERR("Register verification failed");
@@ -57,6 +66,7 @@ bool mpu6050_init(const struct i2c_dt_spec *target_node)
 	    LOG_ERR("Failed to write configuration");
         return false;
     }
+    k_msleep(100);
 
     /* Write sample rate divider */
     res = i2c_reg_write_byte_dt(target_node, init.smp_rate[0], init.smp_rate[1]);
@@ -65,25 +75,27 @@ bool mpu6050_init(const struct i2c_dt_spec *target_node)
 	LOG_ERR("Failed to write sample rate divider");
     return false;
     }
+    k_msleep(100);
 
     /* Set Full Scale Range based on fssel_selection variable */
     switch(fssel_selection)
     {
     case 0:
-        fssel_input = init.fssel_options[0];
         break;
     case 1:
-        fssel_input = init.fssel_options[1];
+        fssel_input = fssel_input | 0x08;
         break;
     case 2:
-        fssel_input = init.fssel_options[2];
+        fssel_input = fssel_input | 0x10;
         break;
     case 3:
-        fssel_input = init.fssel_options[3];
+        fssel_input = fssel_input | 0x18;
         break;
     default:
         break;
     }
+
+    uint8_t fs_sel[2] = {shared.gyro_config,fssel_input}; 
 
     /* Write Full Scale Range configuration */
     res = i2c_reg_write_byte_dt(target_node, fs_sel[0], fs_sel[1]);
@@ -92,21 +104,47 @@ bool mpu6050_init(const struct i2c_dt_spec *target_node)
 	    LOG_ERR("Failed to write full scale range");
         return false;
     }
+    k_msleep(100);
 
-
-
-    /* Write FIFO_RESET bit to USER_CTRL */
-    i2c_reg_write_byte_dt(target_node, init.fifo_usrctrl, 0x04);
-    /* Write FIFO_EN bit to USER_CTRL */
-    i2c_reg_write_byte_dt(target_node, init.fifo_usrctrl, 0x40); 
-    /* Enable acceleration data in FIFO buffer*/
-    res = i2c_reg_write_byte_dt(target_node, init.fifoen[0], init.fifoen[1]);
-    if(res != 0)
+     /* Set Full Scale Range based on fssel_selection variable */
+    switch(accel_selection)
     {
-	    LOG_ERR("Failed to enable FIFO");
-        return false;
+    case 0:
+        break;
+    case 1:
+        accel_input = accel_input | 0x08;
+        break;
+    case 2:
+        accel_input = accel_input | 0x10;
+        break;
+    case 3:
+        accel_input = accel_input | 0x18;
+        break;
+    default:
+        break;
     }
 
+    uint8_t accel[2] = {shared.accel_config,accel_input}; 
+
+    /* Write Full Scale Range configuration */
+    res = i2c_reg_write_byte_dt(target_node, accel[0], accel[1]);
+    if(res != 0)
+    {
+	    LOG_ERR("Failed to write full scale range");
+        return false;
+    }
+    k_msleep(100);
+
+
+    /* Disable FIFO completely before calibration */
+    i2c_reg_write_byte_dt(target_node, init.fifo_usrctrl, 0x00); 
+    k_msleep(100);
+    i2c_reg_write_byte_dt(target_node, init.fifoen[0], 0x00);
+    k_msleep(100);
+
+    /* Clear FIFO count */
+    i2c_reg_write_byte_dt(target_node, init.fifo_usrctrl, 0x04); 
+    k_msleep(100);
 
     /* Log written configuration */
     LOG_INF("The full scale range is ±%i°/s\n", 250*(fssel_selection+1));
@@ -123,45 +161,86 @@ bool mpu6050_init(const struct i2c_dt_spec *target_node)
     return true;
 }
 
+bool fifoint_enable(const struct i2c_dt_spec *target_node)
+{
+    int res;
+
+    /* Write FIFO_RESET bit to USER_CTRL */
+    i2c_reg_write_byte_dt(target_node, init.fifo_usrctrl, 0x04);
+    k_msleep(100);
+    /* Write FIFO_EN bit to USER_CTRL */
+    i2c_reg_write_byte_dt(target_node, init.fifo_usrctrl, 0x40); 
+    k_msleep(100);
+    /* Enable acceleration data in FIFO buffer*/
+    res = i2c_reg_write_byte_dt(target_node, init.fifoen[0], init.fifoen[1]);
+    if(res != 0)
+    {
+	    LOG_ERR("Failed to enable FIFO");
+        return false;
+    }
+    k_msleep(50);
+
+    res = i2c_reg_write_byte_dt(target_node, 0x38, 0x01);
+    if(res != 0)
+    {
+        LOG_ERR("Failed to enable FIFO interrupt");
+        return false;
+    }
+    return true;
+}
+
+
+void readFIFO(const struct device *dev,struct gpio_callback *cb,uint32_t pins)
+{
+    gpio_pin_toggle_dt(&led1);
+}
+
 struct Measurement readAccelFIFO(const struct i2c_dt_spec *target_node)
 {
-    struct Measurement m = {0, 0, 0};
-    uint8_t buf[6];
-    uint8_t fifo_h, fifo_l;
-    uint16_t fifo_count;
+    /* Initialize accel struct*/
+    struct Measurement accel = {0};
 
-    // Read FIFO_COUNT (high + low)
-    if (i2c_reg_read_byte_dt(target_node, read_addr.fifo_counth, &fifo_h) != 0)
-        return m;
+    /* Check FIFO register availability */
+    uint8_t fifo_count_h, fifo_count_l;
+    if (i2c_reg_read_byte_dt(target_node, read_addr.fifo_counth, &fifo_count_h) != 0 ||
+        i2c_reg_read_byte_dt(target_node, read_addr.fifo_countl, &fifo_count_l) != 0) {
+        LOG_ERR("Failed to read FIFO count");
+        return accel;
+    }
+    
+    uint16_t fifo_count = ((uint16_t)fifo_count_h << 8) | fifo_count_l;
+    if (fifo_count < 6) return accel;
 
-    if (i2c_reg_read_byte_dt(target_node, read_addr.fifo_countl, &fifo_l) != 0)
-        return m;
+    int samples = fifo_count / 6;
+    int32_t sum_x = 0, sum_y = 0, sum_z = 0;
 
-    fifo_count = ((uint16_t)fifo_h << 8) | fifo_l;
-
-    // Not enough bytes for one sample
-    if (fifo_count < 6)
-        return m;
-
-    // Align FIFO count to 6-byte boundaries
-    fifo_count -= fifo_count % 6;
-
-    // Read one FIFO sample (6 bytes)
-    if (fifo_count >= 6) {
-        if (i2c_burst_read_dt(target_node, read_addr.fifo_rw, buf, 6) == 0) {
-
-            int16_t raw_x = (int16_t)((buf[0] << 8) | buf[1]) - accel_offset_x;
-            int16_t raw_y = (int16_t)((buf[2] << 8) | buf[3]) - accel_offset_y;
-            int16_t raw_z = (int16_t)((buf[4] << 8) | buf[5]) - accel_offset_z;
-
-            // Store directly in Measurement struct (NO float conversion)
-            m.x = raw_x;
-            m.y = raw_y;
-            m.z = raw_z;
+    for (int i = 0; i < samples; i++) {
+        uint8_t fifo_data[6];
+        if (i2c_burst_read_dt(target_node, read_addr.fifo_rw, fifo_data, 6) != 0) {
+            LOG_ERR("Failed to read FIFO sample %d", i);
+            continue;
         }
+
+        int16_t raw_x = (int16_t)((fifo_data[0] << 8) | fifo_data[1]);
+        int16_t raw_y = (int16_t)((fifo_data[2] << 8) | fifo_data[3]);
+        int16_t raw_z = (int16_t)((fifo_data[4] << 8) | fifo_data[5]);
+
+        // Apply zero-g offsets only
+        raw_x -= accel_offset_x;
+        raw_y -= accel_offset_y;
+        raw_z -= accel_offset_z;  
+
+        sum_x += raw_x;
+        sum_y += raw_y;
+        sum_z += raw_z;
     }
 
-    return m;
+    /* Convert raw values with offsets subtracted to G */
+    accel.x = (float)sum_x / (samples * 16384.0f);
+    accel.y = (float)sum_y / (samples * 16384.0f);
+    accel.z = 1.0f + ((float)sum_z / (samples * 16384.0f)); // Add 1g back for gravity
+
+    return accel;
 }
 
 bool mpu6050_calculate_gyro_offsets(const struct i2c_dt_spec *target_node)
@@ -322,7 +401,7 @@ bool mpu6050_gyro_test(const struct i2c_dt_spec *target_node)
 
 bool mpu6050_accel_test(const struct i2c_dt_spec *target_node) 
 {
-    uint8_t test_config[2] = {shared.accel_config,(fssel_input | 0xE0)};
+    uint8_t test_config[2] = {shared.accel_config,(accel_input | 0xE0)};
     uint8_t config_write;
     int registers[] = {selftest_addr.x, selftest_addr.y, selftest_addr.z};
     int register_size = sizeof(registers) / sizeof(registers[0]);
@@ -360,7 +439,7 @@ bool mpu6050_accel_test(const struct i2c_dt_spec *target_node)
         LOG_INF("MPU6050 Accelometer self-test register %c = 0x%x\n", names[i], raw_bits[i]);
     }
     memset(extra_bits, 0, sizeof(extra_bits)); // Empty extra bit array
-    test_config[1] = fssel_input & ~0xE6;
+    test_config[1] = accel_input & ~0xE6;
     int res_notest = i2c_reg_write_byte_dt(target_node, test_config[0], test_config[1]);
     if(res_notest != 0)
     {

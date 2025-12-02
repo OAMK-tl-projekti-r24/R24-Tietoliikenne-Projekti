@@ -13,6 +13,9 @@
 static const struct gpio_dt_spec led0 = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
 static const struct gpio_dt_spec led1 = GPIO_DT_SPEC_GET(DT_ALIAS(led1), gpios);
 
+extern const struct gpio_dt_spec fifoint;
+extern struct gpio_callback fifo_cb;
+
 
 #define MPU6050_FIFO_R_W     0x74
 
@@ -48,7 +51,6 @@ static const struct
 {
     const uint8_t config[2];
     const uint8_t smp_rate[2];
-    const uint8_t fssel_options[4];
     const uint8_t power[2];
     const uint8_t fifoen[2];
     const uint8_t fifo_usrctrl;
@@ -56,7 +58,6 @@ static const struct
 {
     .config = {0x1a,0x00}, // Configuration, enable/disable CLPF/External Frame Sync
     .smp_rate = {0x19,0}, // Divider for sample rate, sample rate calculated with (8KHz|1KHz)/(1+smp_rate)
-    .fssel_options = {0x00,0x08,0x10,0x18}, // Options for setting Full Scale Range bits
     .power = {0x6B,0x00}, // Register address and value for power state (0x00 for on)
     .fifoen = {0x23, 0x78}, // FIFO Enable register and enable bit for Accelometer
     .fifo_usrctrl = 0x6a // FIFO USER_CTRL register (used for FIFO Ops enable and buffer reset)
@@ -91,6 +92,10 @@ bool mpu6050_gyro_test(const struct i2c_dt_spec *target_node);
 
 /* Read self-test registers for accelometer bits */
 bool mpu6050_accel_test(const struct i2c_dt_spec *target_node);
+
+bool fifoint_enable(const struct i2c_dt_spec *target_node);
+
+void readFIFO(const struct device *dev,struct gpio_callback *cb,uint32_t pins);
 
 /* Read Accelometer values from FIFO buffer */
 struct Measurement readAccelFIFO(const struct i2c_dt_spec *target_node);

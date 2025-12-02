@@ -1,6 +1,6 @@
 / {
     fifoint1: fifoint1 {
-        compatible = "zephyr,gpio";  
+        compatible = "nordic,gpio-pins";  
         gpios = <&gpio1 10 GPIO_ACTIVE_LOW>;
     }; 
 

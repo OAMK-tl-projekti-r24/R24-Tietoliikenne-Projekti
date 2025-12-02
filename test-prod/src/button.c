@@ -1,5 +1,4 @@
 #include "button.h"
-#include "bluetooth.h"
 
 struct gpio_callback button_cb;
 volatile uint8_t counter = 0;
