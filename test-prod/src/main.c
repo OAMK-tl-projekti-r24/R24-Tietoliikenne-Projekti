@@ -83,7 +83,7 @@ int main(void)
 
     // Initialize MPU6050
     if (!mpu6050_init(&dev_i2c1)) return 1;
-    //if (!mpu6050_accel_test(&dev_i2c1)) return 1;
+    if (!mpu6050_accel_test(&dev_i2c1)) return 1;
     if (!mpu6050_calculate_accel_offsets(&dev_i2c1)) return 1;
     if (!fifoint_enable(&dev_i2c1)) return 1;
 

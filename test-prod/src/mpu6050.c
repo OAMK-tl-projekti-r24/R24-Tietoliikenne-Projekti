@@ -19,6 +19,7 @@ bool mpu6050_init(const struct i2c_dt_spec *target_node)
     uint8_t power_state; // Used for checking correct write of power state (On)
     uint8_t fssel_selection = 0; // Selection of configuration with index number of fssel_options array
     uint8_t accel_selection = 0;
+    bool power = false;
     int res;
 
     /* Configure LED for calibration signaling (led0 for accel, led1 for gyro)*/
@@ -32,8 +33,6 @@ bool mpu6050_init(const struct i2c_dt_spec *target_node)
         return false;
     }
 
-    k_msleep(500);
-
     /* Check MPU6050 by reading WHO_AM_I register */
     res = i2c_reg_read_byte_dt(target_node, MPU6050_WHOAMI, &addr_data);
     if (res != 0) 
@@ -42,22 +41,27 @@ bool mpu6050_init(const struct i2c_dt_spec *target_node)
         return false;
     }
 
-
-        /* Wake sensor up from sleep mode */
-    res = i2c_reg_write_byte_dt(target_node, init.power[0], init.power[1]);
-    if(res != 0)
+    // TODO: Kirjoita käynnistyskoodi rekisterin 0x6B ohjeiden mukaan
+    while (!power)
     {
+        /* Wake sensor up from sleep mode */
+        res = i2c_reg_write_byte_dt(target_node, init.power[0], 0x83);
+        if(res != 0)
+        {
 	    LOG_ERR("Failed to power up");
         return false;
-    }
+        }
 
-    k_msleep(500);
+        k_msleep(100);
 
-    res = i2c_reg_read_byte_dt(target_node, init.power[0], &power_state);
-    if(res != 0 || power_state != init.power[1]) {
+        res = i2c_reg_read_byte_dt(target_node, init.power[0], &power_state);
+        if(res != 0) {
         LOG_ERR("Register verification failed");
         return false;
+        }
+        power = true;
     }
+    printk("The register value is %x", power_state);
 
     /* Write CLPF/External Frame Sync configuration */
     res = i2c_reg_write_byte_dt(target_node, init.config[0], init.config[1]);
@@ -291,6 +295,11 @@ bool mpu6050_calculate_accel_offsets(const struct i2c_dt_spec *target_node)
     uint8_t buf[6];
     int valid_samples = 0;
 
+    i2c_reg_write_byte_dt(target_node, init.fifo_usrctrl, 0x00);
+    i2c_reg_write_byte_dt(target_node, init.fifoen[0], 0x00);
+    k_msleep(50);  
+
+            
     /* Notify user about calibration start via logs and LED */
     printk("Calculating MPU6050 accelerometer offsets...\n");
     gpio_pin_toggle_dt(&led0);
