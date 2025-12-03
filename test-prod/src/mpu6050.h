@@ -51,16 +51,16 @@ static const struct
 {
     const uint8_t config[2];
     const uint8_t smp_rate[2];
-    const uint8_t power[2];
+    const uint8_t power;
     const uint8_t fifoen[2];
     const uint8_t fifo_usrctrl;
 } init = 
 {
     .config = {0x1a,0x00}, // Configuration, enable/disable CLPF/External Frame Sync
     .smp_rate = {0x19,0}, // Divider for sample rate, sample rate calculated with (8KHz|1KHz)/(1+smp_rate)
-    .power = {0x6B,0x00}, // Register address and value for power state (0x00 for on)
+    .power = 0x6B, // Register address and value for power state (0x00 for on)
     .fifoen = {0x23, 0x78}, // FIFO Enable register and enable bit for Accelometer
-    .fifo_usrctrl = 0x6a // FIFO USER_CTRL register (used for FIFO Ops enable and buffer reset)
+    .fifo_usrctrl = 0x6A // FIFO USER_CTRL register (used for FIFO Ops enable and buffer reset)
 };
 
 /* Registers to be read outside of init and/or testing */

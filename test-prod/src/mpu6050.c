@@ -41,27 +41,46 @@ bool mpu6050_init(const struct i2c_dt_spec *target_node)
         return false;
     }
 
-    // TODO: Kirjoita käynnistyskoodi rekisterin 0x6B ohjeiden mukaan
     while (!power)
     {
-        /* Wake sensor up from sleep mode */
-        res = i2c_reg_write_byte_dt(target_node, init.power[0], 0x83);
+        /* Reset entier sensor by setting DEVICE_RESET bit */
+        res = i2c_reg_write_byte_dt(target_node, init.power, 0x80);
         if(res != 0)
         {
-	    LOG_ERR("Failed to power up");
+	    LOG_ERR("Failed to reset device");
         return false;
         }
 
         k_msleep(100);
 
-        res = i2c_reg_read_byte_dt(target_node, init.power[0], &power_state);
-        if(res != 0) {
+        /* Reset subsensors and FIFO buffer */
+        res = i2c_reg_write_byte_dt(target_node, init.fifo_usrctrl, 0x05);
+        if(res != 0)
+        {
+	    LOG_ERR("Failed to clear buffers");
+        return false;
+        }
+
+        k_msleep(100);
+
+        /* Set clock source as internal gyroscope Z axis for stability and power on sensor */
+        res = i2c_reg_write_byte_dt(target_node, init.power, 0x03);
+        if(res != 0)
+        {
+	    LOG_ERR("Failed to write clock source");
+        return false;
+        }
+
+        k_msleep(50);
+
+        /* Verify PWR_MGMT_1 register contents */
+        res = i2c_reg_read_byte_dt(target_node, init.power, &power_state);
+        if(res != 0 || power_state != 0x03) {
         LOG_ERR("Register verification failed");
         return false;
         }
         power = true;
     }
-    printk("The register value is %x", power_state);
 
     /* Write CLPF/External Frame Sync configuration */
     res = i2c_reg_write_byte_dt(target_node, init.config[0], init.config[1]);
