@@ -5,14 +5,17 @@ LOG_MODULE_DECLARE(testapp);
 
 uint8_t fssel_input = 0;
 uint8_t accel_input = 0;
+uint8_t register_data;
 int16_t gyro_offset_x = 0, gyro_offset_y = 0 , gyro_offset_z = 0;
 int16_t accel_offset_x = 0, accel_offset_y = 0, accel_offset_z = 0;
 const struct gpio_dt_spec fifoint = GPIO_DT_SPEC_GET(DT_ALIAS(fifoint), gpios);
 struct gpio_callback fifo_cb;
+static struct k_work fifo_work;
+const struct i2c_dt_spec *mpu_i2c_bus;
 
 bool mpu6050_init(const struct i2c_dt_spec *target_node) 
 {   
-    uint8_t addr_data;
+    uint8_t addr_data; // Used for reading the WHO_AM_I register (the fundamental device availability check)
     uint8_t config_data;
     uint8_t smprate_data;
     uint8_t fssel_data; // Used to check written fssel configuration
@@ -43,7 +46,7 @@ bool mpu6050_init(const struct i2c_dt_spec *target_node)
 
     while (!power)
     {
-        /* Reset entier sensor by setting DEVICE_RESET bit */
+        /* Reset entire sensor by setting DEVICE_RESET bit */
         res = i2c_reg_write_byte_dt(target_node, init.power, 0x80);
         if(res != 0)
         {
@@ -175,6 +178,8 @@ bool mpu6050_init(const struct i2c_dt_spec *target_node)
 
 bool fifoint_enable(const struct i2c_dt_spec *target_node)
 {
+    /* set alternative pointer to MPU6050 to be used by interrupt work handler */
+    mpu_i2c_bus = target_node;
     int res;
 
     /* Write FIFO_EN bit to USER_CTRL */
@@ -188,7 +193,11 @@ bool fifoint_enable(const struct i2c_dt_spec *target_node)
         return false;
     }
 
-    res = i2c_reg_write_byte_dt(target_node, 0x38, 0x01);
+    /* Initialize work handler */
+    k_work_init(&fifo_work, fifo_handler);
+
+    /* Enable FIFO_OFLOW interrupts */
+    res = i2c_reg_write_byte_dt(target_node, 0x38, 0x10);
     if(res != 0)
     {
         LOG_ERR("Failed to enable FIFO interrupt");
@@ -197,10 +206,16 @@ bool fifoint_enable(const struct i2c_dt_spec *target_node)
     return true;
 }
 
+static void fifo_handler(struct k_work *work)
+{
+    /* TODO: read samples */
+    i2c_reg_read_byte_dt(mpu_i2c_bus, 0x3A, &register_data);
+}
+
 
 void readFIFO(const struct device *dev,struct gpio_callback *cb,uint32_t pins)
 {   
-    printk("toimii");
+    k_work_submit(&fifo_work);
 }
 
 struct Measurement readAccelFIFO(const struct i2c_dt_spec *target_node)

@@ -95,6 +95,8 @@ bool mpu6050_accel_test(const struct i2c_dt_spec *target_node);
 
 bool fifoint_enable(const struct i2c_dt_spec *target_node);
 
+static void fifo_handler(struct k_work *work);
+
 void readFIFO(const struct device *dev,struct gpio_callback *cb,uint32_t pins);
 
 /* Read Accelometer values from FIFO buffer */
