@@ -56,7 +56,7 @@ static const struct
     const uint8_t fifo_usrctrl;
 } init = 
 {
-    .config = {0x1a,0x00}, // Configuration, enable/disable CLPF/External Frame Sync
+    .config = {0x1A,0x00}, // Configuration, enable/disable CLPF/External Frame Sync
     .smp_rate = {0x19,0}, // Divider for sample rate, sample rate calculated with (8KHz|1KHz)/(1+smp_rate)
     .power = 0x6B, // Register address and value for power state (0x00 for on)
     .fifoen = {0x23, 0x78}, // FIFO Enable register and enable bit for Accelometer
@@ -95,7 +95,7 @@ bool mpu6050_accel_test(const struct i2c_dt_spec *target_node);
 
 bool fifoint_enable(const struct i2c_dt_spec *target_node);
 
-static void fifo_handler(struct k_work *work);
+void fifo_handler(struct k_work *work);
 
 void readFIFO(const struct device *dev,struct gpio_callback *cb,uint32_t pins);
 

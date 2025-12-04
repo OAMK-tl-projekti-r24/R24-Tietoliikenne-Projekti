@@ -3,6 +3,7 @@
 
 LOG_MODULE_DECLARE(testapp);
 
+
 uint8_t fssel_input = 0;
 uint8_t accel_input = 0;
 uint8_t register_data;
@@ -12,6 +13,8 @@ const struct gpio_dt_spec fifoint = GPIO_DT_SPEC_GET(DT_ALIAS(fifoint), gpios);
 struct gpio_callback fifo_cb;
 static struct k_work fifo_work;
 const struct i2c_dt_spec *mpu_i2c_bus;
+
+
 
 bool mpu6050_init(const struct i2c_dt_spec *target_node) 
 {   
@@ -78,7 +81,8 @@ bool mpu6050_init(const struct i2c_dt_spec *target_node)
 
         /* Verify PWR_MGMT_1 register contents */
         res = i2c_reg_read_byte_dt(target_node, init.power, &power_state);
-        if(res != 0 || power_state != 0x03) {
+        if(res != 0 || power_state != 0x03) 
+        {
         LOG_ERR("Register verification failed");
         return false;
         }
@@ -176,6 +180,8 @@ bool mpu6050_init(const struct i2c_dt_spec *target_node)
     return true;
 }
 
+
+
 bool fifoint_enable(const struct i2c_dt_spec *target_node)
 {
     /* set alternative pointer to MPU6050 to be used by interrupt work handler */
@@ -196,8 +202,8 @@ bool fifoint_enable(const struct i2c_dt_spec *target_node)
     /* Initialize work handler */
     k_work_init(&fifo_work, fifo_handler);
 
-    /* Enable FIFO_OFLOW interrupts */
-    res = i2c_reg_write_byte_dt(target_node, 0x38, 0x10);
+    /* Enable DATA_RDY interrupts */
+    res = i2c_reg_write_byte_dt(target_node, 0x38, 0x01);
     if(res != 0)
     {
         LOG_ERR("Failed to enable FIFO interrupt");
@@ -206,17 +212,40 @@ bool fifoint_enable(const struct i2c_dt_spec *target_node)
     return true;
 }
 
-static void fifo_handler(struct k_work *work)
+
+
+void fifo_handler(struct k_work *work)
 {
-    /* TODO: read samples */
-    i2c_reg_read_byte_dt(mpu_i2c_bus, 0x3A, &register_data);
+    /* Read buffer sample count */
+    uint8_t h, l;
+    i2c_reg_read_byte_dt(mpu_i2c_bus, 0x72, &h);
+    i2c_reg_read_byte_dt(mpu_i2c_bus, 0x73, &l);
+
+    uint16_t fifo_count = ((uint16_t)h << 8) | l;
+
+    /* Return if 1020 / 6 = 170 samples are not collected */
+    if (fifo_count < 1020) {
+        return;  
+    }
+
+    gpio_pin_toggle_dt(&led1);
+    //printk("Collected\n");
+    static uint8_t fifo_buffer[1020];
+
+    /* TODO: extend FIFO handler and/or associated functions to handle/convert collected samples */
+
+    /* Burst read FIFO into buffer in stack */
+    i2c_burst_read_dt(mpu_i2c_bus, 0x74, fifo_buffer, 1020);
 }
+
 
 
 void readFIFO(const struct device *dev,struct gpio_callback *cb,uint32_t pins)
 {   
     k_work_submit(&fifo_work);
 }
+
+
 
 struct Measurement readAccelFIFO(const struct i2c_dt_spec *target_node)
 {
@@ -266,6 +295,8 @@ struct Measurement readAccelFIFO(const struct i2c_dt_spec *target_node)
     return accel;
 }
 
+
+
 bool mpu6050_calculate_gyro_offsets(const struct i2c_dt_spec *target_node)
 {
     const int samples = 3000;
@@ -306,6 +337,8 @@ bool mpu6050_calculate_gyro_offsets(const struct i2c_dt_spec *target_node)
     gpio_pin_toggle_dt(&led1);
     return true;
 }
+
+
 
 bool mpu6050_calculate_accel_offsets(const struct i2c_dt_spec *target_node)
 {
@@ -354,6 +387,8 @@ bool mpu6050_calculate_accel_offsets(const struct i2c_dt_spec *target_node)
     gpio_pin_toggle_dt(&led0);       
     return true;
 }
+
+
 
 bool mpu6050_gyro_test(const struct i2c_dt_spec *target_node) 
 {
@@ -418,6 +453,7 @@ bool mpu6050_gyro_test(const struct i2c_dt_spec *target_node)
     }
     return true;
 }
+
 
 
 bool mpu6050_accel_test(const struct i2c_dt_spec *target_node) 
