@@ -224,18 +224,18 @@ void fifo_handler(struct k_work *work)
     uint16_t fifo_count = ((uint16_t)h << 8) | l;
 
     /* Return if 1020 / 6 = 170 samples are not collected */
-    if (fifo_count < 1020) {
+    if (fifo_count < 510) {
         return;  
     }
 
     gpio_pin_toggle_dt(&led1);
     //printk("Collected\n");
-    static uint8_t fifo_buffer[1020];
+    static uint8_t fifo_buffer[510];
 
     /* TODO: extend FIFO handler and/or associated functions to handle/convert collected samples */
 
     /* Burst read FIFO into buffer in stack */
-    i2c_burst_read_dt(mpu_i2c_bus, 0x74, fifo_buffer, 1020);
+    i2c_burst_read_dt(mpu_i2c_bus, 0x74, fifo_buffer, 510);
 }
 
 
