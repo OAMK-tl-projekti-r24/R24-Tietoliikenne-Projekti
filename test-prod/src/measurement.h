@@ -4,16 +4,15 @@
 #include <stdint.h>
 
 typedef struct __attribute__((packed)) {
-    int16_t x;
-    int16_t y;
-    int16_t z;
-    uint8_t button_val;
+    float x;
+    float y;
+    float z;
 } Data;
 
-struct Measurement {
-    int16_t x;
-    int16_t y;
-    int16_t z;
+struct __packed Measurement {
+    float x;
+    float y;
+    float z;
 };
 
 #endif

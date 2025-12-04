@@ -14,6 +14,12 @@ struct gpio_callback fifo_cb;
 static struct k_work fifo_work;
 const struct i2c_dt_spec *mpu_i2c_bus;
 
+#define FIFO_BUFFER_SIZE 510
+
+uint8_t fifo_raw_buffer[FIFO_BUFFER_SIZE];
+volatile bool fifo_data_ready = false;
+volatile uint16_t read_size = 0;
+
 
 
 bool mpu6050_init(const struct i2c_dt_spec *target_node) 
@@ -218,24 +224,30 @@ void fifo_handler(struct k_work *work)
 {
     /* Read buffer sample count */
     uint8_t h, l;
-    i2c_reg_read_byte_dt(mpu_i2c_bus, 0x72, &h);
-    i2c_reg_read_byte_dt(mpu_i2c_bus, 0x73, &l);
+    i2c_reg_read_byte_dt(mpu_i2c_bus, read_addr.fifo_counth, &h);
+    i2c_reg_read_byte_dt(mpu_i2c_bus, read_addr.fifo_countl, &l);
 
     uint16_t fifo_count = ((uint16_t)h << 8) | l;
+    
+    /* Set memory-safe buffer to read into (does not exceed FIFO_BUFFER_SIZE) */
+    uint16_t to_read = (fifo_count > FIFO_BUFFER_SIZE) ? FIFO_BUFFER_SIZE : fifo_count;
+    read_size = to_read - (to_read % 6);
 
-    /* Return if 1020 / 6 = 170 samples are not collected */
+    /* Return if 510 / 6 = 85 samples are not collected */
     if (fifo_count < 510) {
         return;  
     }
 
     gpio_pin_toggle_dt(&led1);
     //printk("Collected\n");
-    static uint8_t fifo_buffer[510];
 
     /* TODO: extend FIFO handler and/or associated functions to handle/convert collected samples */
 
-    /* Burst read FIFO into buffer in stack */
-    i2c_burst_read_dt(mpu_i2c_bus, 0x74, fifo_buffer, 510);
+    /* Burst read FIFO into buffer */
+    i2c_burst_read_dt(mpu_i2c_bus, read_addr.fifo_rw, fifo_raw_buffer, to_read);
+
+    /* Signal buffer ready for send_data_thread */
+    fifo_data_ready = true;
 }
 
 

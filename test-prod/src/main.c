@@ -3,7 +3,6 @@
 #include "button.h" 
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
-#include <zephyr/drivers/i2c.h>
 #include <zephyr/drivers/uart.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/printk.h>
@@ -21,44 +20,61 @@ extern volatile uint8_t counter;
 
 LOG_MODULE_REGISTER(testapp);
 
-/*
-static Data buffer[SAMPLES_PER_BURST];
+
+#define FIFO_BUFFER_SIZE 510
+extern volatile bool fifo_data_ready;
+extern volatile uint16_t read_size;
+extern uint8_t fifo_raw_buffer[FIFO_BUFFER_SIZE];
+extern int16_t accel_offset_x;
+extern int16_t accel_offset_y;
+extern int16_t accel_offset_z;
+
 
 K_THREAD_STACK_DEFINE(send_data_stack, STACKSIZE);
 static struct k_thread send_data_thread_id;
 
 void send_data_thread(void)
 {
-    while (1) {
-
-        // 1. Fill buffer
-        for (int i = 0; i < SAMPLES_PER_BURST; i++) {
-            struct Measurement m = readAccelFIFO(&dev_i2c1);
-            buffer[i].x = m.x;
-            buffer[i].y = m.y;
-            buffer[i].z = m.z;
-            buffer[i].button_val = counter;
-            k_busy_wait(125); // ~8 kHz sampling
+        while (1) {
+        if (!fifo_data_ready) {
+            k_sleep(K_MSEC(1)); 
+            continue;
         }
 
-        // 2. Send burst
-        for (int i = 0; i < SAMPLES_PER_BURST; i++) {
+        int samples = read_size / 6; // 6 bytes per sample
+        for (int i = 0; i < samples; i++) {
+            uint8_t *p = &fifo_raw_buffer[i*6];
+
+            int16_t raw_x = (p[0] << 8) | p[1];
+            int16_t raw_y = (p[2] << 8) | p[3];
+            int16_t raw_z = (p[4] << 8) | p[5];
+
+            /*Apply offsets */
+            raw_x -= accel_offset_x;
+            raw_y -= accel_offset_y;
+            raw_z -= accel_offset_z;
+
+            struct Measurement m;
+            m.x = (float)raw_x / 16384.0f;
+            m.y = (float)raw_y / 16384.0f;
+            m.z = 1.0f + (float)raw_z / 16384.0f; // add 1g for gravity
+
+            /* Package data and send via UART */
             uart_poll_out(data_uart, 0xAA);
             uart_poll_out(data_uart, 0x55);
-            uint8_t *p = (uint8_t *)&buffer[i];
-            for (int j = 0; j < sizeof(Data); j++) {
-                uart_poll_out(data_uart, p[j]);
-            }
+            uint8_t *mptr = (uint8_t *)&m;
+            for (int j = 0; j < sizeof(m); j++)
+                uart_poll_out(data_uart, mptr[j]);
         }
 
-        // 3. Wait until next burst (optional, could be zero if timing matches)
-        // k_usleep(BURST_INTERVAL_US); // not strictly needed
+        // Mark buffer as processed
+        fifo_data_ready = false;
     }
-} */
+} 
 
 int main(void)
 {
-    /*
+    
     if (!device_is_ready(data_uart)) {
         LOG_ERR("UART2 not ready");
         return 1;
@@ -71,7 +87,7 @@ int main(void)
         .data_bits = UART_CFG_DATA_BITS_8,
         .flow_ctrl = UART_CFG_FLOW_CTRL_NONE,
     };
-    uart_configure(data_uart, &cfg); */
+    uart_configure(data_uart, &cfg); 
 
         // Initialize button callback (optional)
     gpio_pin_configure_dt(&button1, GPIO_INPUT | GPIO_PULL_UP);
@@ -95,14 +111,14 @@ int main(void)
 
 
 
-    /*
+    
     // Start data thread
     k_thread_create(&send_data_thread_id,
                     send_data_stack,
                     STACKSIZE,
                     send_data_thread,
                     NULL, NULL, NULL,
-                    PRIORITY, 0, K_NO_WAIT); */
+                    PRIORITY, 0, K_NO_WAIT); 
 
     return 0;
 }

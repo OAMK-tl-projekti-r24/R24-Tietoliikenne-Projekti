@@ -17,8 +17,6 @@ extern const struct gpio_dt_spec fifoint;
 extern struct gpio_callback fifo_cb;
 
 
-#define MPU6050_FIFO_R_W     0x74
-
 /* Self-test registers */
 static const struct 
 {
