@@ -3,10 +3,10 @@
 
 
 void printConfusionMatrix(void);
-void makeHundredFakeClassifications(void);
 void makeOneClassificationAndUpdateConfusionMatrix(int);
 int calculateDistanceToAllCentrePointsAndSelectWinner(int,int,int);
 void resetConfusionMatrix(void);
+int argMin(float arr[]);
 
 
 #endif
