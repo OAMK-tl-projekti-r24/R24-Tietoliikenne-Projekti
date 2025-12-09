@@ -3,7 +3,6 @@
 #include "confusion.h"
 #include "adc.h"
 
-int argMin(float arr[]);
 /* 
   K-means algorithm should provide 6 center points with
   3 values x,y,z. Let's test measurement system with known
