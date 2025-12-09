@@ -64,32 +64,32 @@ void makeHundredFakeClassifications(void)
 
 void makeOneClassificationAndUpdateConfusionMatrix(int direction)
 {
-   /**************************************
-   Tee toteutus tälle ja voit tietysti muuttaa tämän aliohjelman sellaiseksi,
-   että se tekee esim 100 kpl mittauksia tai sitten niin, että tätä funktiota
-   kutsutaan 100 kertaa yhden mittauksen ja sen luokittelun tekemiseksi.
-   **************************************/
-   printk("Make your own implementation for this function if you need this\n");
+    int result = calculateDistanceToAllCentrePointsAndSelectWinner(1,0,0);
+    printf("tulos on %d\n", result);
+    CM[direction][result]++;
+    printConfusionMatrix();
 }
 
 int calculateDistanceToAllCentrePointsAndSelectWinner(int x,int y,int z)
 {
-   /***************************************
-   Tämän aliohjelma ottaa yhden kiihtyvyysanturin mittauksen x,y,z,
-   laskee etäisyyden kaikkiin 6 K-means keskipisteisiin ja valitsee
-   sen keskipisteen, jonka etäisyys mittaustulokseen on lyhyin.
-   ***************************************/
-   float distance[6] = 0;
-   for (int i = 0; i <= 6; i++) {
-   float X = CP[i][1];
-   float Y = CP[i][2];
-   float Z = CP[i][3];
-   distance[i] = sqrt(pow((X - x), 2) + pow((Y - y), 2) + pow((Z - z), 2));
-   closestidx = argMin(distance);
-   printk("Lähin keskipiste on %d\n", distance[closestidx]);
-}
-   printk("Make your own implementation for this function if you need this\n");
-   return 0;
+    float distance[6] = {0};
+
+    for (int i = 0; i < 6; i++) {
+        float X = CP[i][0];
+        float Y = CP[i][1];
+        float Z = CP[i][2];
+
+        distance[i] = sqrt(
+            pow(X - x, 2) +
+            pow(Y - y, 2) +
+            pow(Z - z, 2)
+            );
+    }
+
+    int closestidx = argMin(distance);
+
+
+    return closestidx;
 }
 
 void resetConfusionMatrix(void)
@@ -106,7 +106,7 @@ void resetConfusionMatrix(void)
 int argMin(float arr[])
 {
     int minIndex = 0;
-    for (int i = 0; i <= 5; i++) {
+    for (int i = 0; i < 6; i++) {
         if (arr[i] < arr[minIndex]) {
             minIndex = i;
         }
