@@ -57,7 +57,7 @@ static const struct
     .config = {0x1A,0x00}, // Configuration, enable/disable CLPF/External Frame Sync
     .smp_rate = {0x19,0}, // Divider for sample rate, sample rate calculated with (8KHz|1KHz)/(1+smp_rate)
     .power = 0x6B, // Register address and value for power state (0x00 for on)
-    .fifoen = {0x23, 0x78}, // FIFO Enable register and enable bit for Accelometer
+    .fifoen = {0x23, 0x08}, // FIFO Enable register and enable bit for Accelometer
     .fifo_usrctrl = 0x6A // FIFO USER_CTRL register (used for FIFO Ops enable and buffer reset)
 };
 

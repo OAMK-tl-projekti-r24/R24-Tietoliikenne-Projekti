@@ -25,7 +25,8 @@ static void button_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t val
 
 /* values for characteristics */
 static uint16_t gyro_value = 0;
-static uint16_t accel_value = 0;
+//static uint16_t accel_value = 0;
+static uint8_t accel_value[12];
 static uint8_t button_value = 0;
 
 
@@ -137,6 +138,15 @@ static void on_connected(struct bt_conn *conn, uint8_t err)
         LOG_ERR("BLE: Failed to connect (%u)\n", err);
     } else {
         LOG_INF("BLE: Connected\n");
+        static struct bt_le_conn_param conn_param = {
+            .interval_min = 12,   // 15 ms
+            .interval_max = 12,   // 15 ms
+            .latency = 0,
+            .timeout = 400,
+        };
+
+        bt_conn_le_param_update(conn, &conn_param);
+
     }
 }
 
@@ -174,6 +184,7 @@ int my_ble_init(void)
         LOG_ERR("Advertising failed (%d)", err);
         return err;
     }
+
 
     LOG_INF("Advertising started\n");
     printk("BLE initialized\n");

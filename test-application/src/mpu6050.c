@@ -220,6 +220,11 @@ struct Accel readAccelFIFO(const struct i2c_dt_spec *target_node)
     accel.y = (float)sum_y / (samples * 16384.0f);
     accel.z = 1.0f + ((float)sum_z / (samples * 16384.0f)); // Add 1g back for gravity
 
+    /* Round to 2 decimal places */
+    accel.x = roundf(accel.x * 100.0f) / 100.0f;
+    accel.y = roundf(accel.y * 100.0f) / 100.0f;
+    accel.z = roundf(accel.z * 100.0f) / 100.0f;
+
     return accel;
 }
 

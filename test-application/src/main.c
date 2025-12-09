@@ -42,14 +42,14 @@ void send_data_thread(void)
         struct Accel accel_data = readAccelFIFO(&dev_i2c1);
 
         // Read gyroscope once (or implement similar FIFO if needed)
-        struct Measurement gyro_data = readGyro(&dev_i2c1);
+        //struct Measurement gyro_data = readGyro(&dev_i2c1);
 
         // Print debug info
-        printk("Accel X: %.3f, Y: %.3f, Z: %.3f\n", accel_data.x, accel_data.y, accel_data.z);
+        //printk("Accel X: %.3f, Y: %.3f, Z: %.3f\n", accel_data.x, accel_data.y, accel_data.z);
 
         // Send via BLE
         my_ble_send_accel(accel_data);
-        my_ble_send_gyro(gyro_data);
+        //my_ble_send_gyro(gyro_data);
 
         // Sleep to control data rate
         k_sleep(K_MSEC(15));
@@ -87,11 +87,11 @@ int main(void)
         {
         return 1;
         }
-
+        /*
         if (!mpu6050_calculate_gyro_offsets(&dev_i2c1)) 
         {
         return 1;
-        }
+        }*/
         
         
         k_work_init(&adv_work, adv_work_handler);

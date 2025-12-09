@@ -9,10 +9,10 @@ typedef struct __attribute__((packed)) {
     float z;
 } Data;
 
-struct __packed Measurement {
+struct Measurement {
     float x;
     float y;
     float z;
-};
+} __attribute__((packed));
 
 #endif

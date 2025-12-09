@@ -4,8 +4,8 @@
 LOG_MODULE_DECLARE(testapp);
 
 
-uint8_t fssel_input = 0;
-uint8_t accel_input = 0;
+uint8_t fssel_input = 0x00;
+uint8_t accel_input = 0x00;
 uint8_t register_data;
 int16_t gyro_offset_x = 0, gyro_offset_y = 0 , gyro_offset_z = 0;
 int16_t accel_offset_x = 0, accel_offset_y = 0, accel_offset_z = 0;
@@ -14,7 +14,7 @@ struct gpio_callback fifo_cb;
 static struct k_work fifo_work;
 const struct i2c_dt_spec *mpu_i2c_bus;
 
-#define FIFO_BUFFER_SIZE 510
+#define FIFO_BUFFER_SIZE 1020
 
 uint8_t fifo_raw_buffer[FIFO_BUFFER_SIZE];
 volatile bool fifo_data_ready = false;
@@ -27,6 +27,7 @@ bool mpu6050_init(const struct i2c_dt_spec *target_node)
     uint8_t addr_data; // Used for reading the WHO_AM_I register (the fundamental device availability check)
     uint8_t config_data;
     uint8_t smprate_data;
+    uint8_t accel_data;
     uint8_t fssel_data; // Used to check written fssel configuration
     uint8_t power_state; // Used for checking correct write of power state (On)
     uint8_t fssel_selection = 0; // Selection of configuration with index number of fssel_options array
@@ -170,6 +171,9 @@ bool mpu6050_init(const struct i2c_dt_spec *target_node)
         return false;
     }
 
+    i2c_reg_read_byte_dt(target_node, shared.accel_config, &accel_data);
+    printk("Accelerometer config is %x\n", accel_data);
+
 
     /* Log written configuration */
     LOG_INF("The full scale range is ±%i°/s\n", 250*(fssel_selection+1));
@@ -209,7 +213,7 @@ bool fifoint_enable(const struct i2c_dt_spec *target_node)
     k_work_init(&fifo_work, fifo_handler);
 
     /* Enable DATA_RDY interrupts */
-    res = i2c_reg_write_byte_dt(target_node, 0x38, 0x01);
+    res = i2c_reg_write_byte_dt(target_node, 0x38, 0x10);
     if(res != 0)
     {
         LOG_ERR("Failed to enable FIFO interrupt");
@@ -222,32 +226,21 @@ bool fifoint_enable(const struct i2c_dt_spec *target_node)
 
 void fifo_handler(struct k_work *work)
 {
-    /* Read buffer sample count */
-    uint8_t h, l;
-    i2c_reg_read_byte_dt(mpu_i2c_bus, read_addr.fifo_counth, &h);
-    i2c_reg_read_byte_dt(mpu_i2c_bus, read_addr.fifo_countl, &l);
+   uint8_t int_status;
 
-    uint16_t fifo_count = ((uint16_t)h << 8) | l;
-    
-    /* Set memory-safe buffer to read into (does not exceed FIFO_BUFFER_SIZE) */
-    uint16_t to_read = (fifo_count > FIFO_BUFFER_SIZE) ? FIFO_BUFFER_SIZE : fifo_count;
-    read_size = to_read - (to_read % 6);
+    // Read INT_STATUS register
+    if (i2c_reg_read_byte_dt(mpu_i2c_bus, 0x3A, &int_status) != 0) return;
 
-    /* Return if 510 / 6 = 85 samples are not collected */
-    if (fifo_count < 510) {
-        return;  
+    if (int_status & 0x10) {  // FIFO_OVERFLOW
+        //LOG_ERR("FIFO overflow detected, resetting FIFO");
+
+        // Reset FIFO
+        i2c_reg_write_byte_dt(mpu_i2c_bus, init.fifo_usrctrl, 0x04); // reset FIFO
+        k_msleep(1);
+        i2c_reg_write_byte_dt(mpu_i2c_bus, init.fifo_usrctrl, 0x40); // re-enable FIFO
+
+        fifo_data_ready = false; // clear flag
     }
-
-    gpio_pin_toggle_dt(&led1);
-    //printk("Collected\n");
-
-    /* TODO: extend FIFO handler and/or associated functions to handle/convert collected samples */
-
-    /* Burst read FIFO into buffer */
-    i2c_burst_read_dt(mpu_i2c_bus, read_addr.fifo_rw, fifo_raw_buffer, to_read);
-
-    /* Signal buffer ready for send_data_thread */
-    fifo_data_ready = true;
 }
 
 
@@ -255,56 +248,6 @@ void fifo_handler(struct k_work *work)
 void readFIFO(const struct device *dev,struct gpio_callback *cb,uint32_t pins)
 {   
     k_work_submit(&fifo_work);
-}
-
-
-
-struct Measurement readAccelFIFO(const struct i2c_dt_spec *target_node)
-{
-    /* Initialize accel struct*/
-    struct Measurement accel = {0};
-
-    /* Check FIFO register availability */
-    uint8_t fifo_count_h, fifo_count_l;
-    if (i2c_reg_read_byte_dt(target_node, read_addr.fifo_counth, &fifo_count_h) != 0 ||
-        i2c_reg_read_byte_dt(target_node, read_addr.fifo_countl, &fifo_count_l) != 0) {
-        LOG_ERR("Failed to read FIFO count");
-        return accel;
-    }
-    
-    uint16_t fifo_count = ((uint16_t)fifo_count_h << 8) | fifo_count_l;
-    if (fifo_count < 6) return accel;
-
-    int samples = fifo_count / 6;
-    int32_t sum_x = 0, sum_y = 0, sum_z = 0;
-
-    for (int i = 0; i < samples; i++) {
-        uint8_t fifo_data[6];
-        if (i2c_burst_read_dt(target_node, read_addr.fifo_rw, fifo_data, 6) != 0) {
-            LOG_ERR("Failed to read FIFO sample %d", i);
-            continue;
-        }
-
-        int16_t raw_x = (int16_t)((fifo_data[0] << 8) | fifo_data[1]);
-        int16_t raw_y = (int16_t)((fifo_data[2] << 8) | fifo_data[3]);
-        int16_t raw_z = (int16_t)((fifo_data[4] << 8) | fifo_data[5]);
-
-        // Apply zero-g offsets only
-        raw_x -= accel_offset_x;
-        raw_y -= accel_offset_y;
-        raw_z -= accel_offset_z;  
-
-        sum_x += raw_x;
-        sum_y += raw_y;
-        sum_z += raw_z;
-    }
-
-    /* Convert raw values with offsets subtracted to G */
-    accel.x = (float)sum_x / (samples * 16384.0f);
-    accel.y = (float)sum_y / (samples * 16384.0f);
-    accel.z = 1.0f + ((float)sum_z / (samples * 16384.0f)); // Add 1g back for gravity
-
-    return accel;
 }
 
 
@@ -354,7 +297,7 @@ bool mpu6050_calculate_gyro_offsets(const struct i2c_dt_spec *target_node)
 
 bool mpu6050_calculate_accel_offsets(const struct i2c_dt_spec *target_node)
 {
-    const int samples = 3000;
+    const int samples = 5000;
     int32_t sum_x = 0, sum_y = 0, sum_z = 0;
     uint8_t buf[6];
     int valid_samples = 0;
@@ -404,7 +347,7 @@ bool mpu6050_calculate_accel_offsets(const struct i2c_dt_spec *target_node)
 
 bool mpu6050_gyro_test(const struct i2c_dt_spec *target_node) 
 {
-    uint8_t test_config[2] = {shared.gyro_config,(fssel_input | 0xE0)};
+    uint8_t test_value = fssel_input | 0xE0;
     uint8_t config_write;
     int registers[] = {selftest_addr.x, selftest_addr.y, selftest_addr.z};
     int register_size = sizeof(registers) / sizeof(registers[0]);
@@ -415,7 +358,7 @@ bool mpu6050_gyro_test(const struct i2c_dt_spec *target_node)
     uint8_t raw_bits[3];
     
     /* Enable test mode*/
-    int res_test = i2c_reg_write_byte_dt(target_node, test_config[0], test_config[1]);
+    int res_test = i2c_reg_write_byte_dt(target_node, shared.gyro_config, test_value);
     if(res_test != 0)
     {
 	    LOG_ERR("Failed to enable tests!");
@@ -431,8 +374,7 @@ bool mpu6050_gyro_test(const struct i2c_dt_spec *target_node)
         raw_bits[i] = raw_bits[i] & 0x1f; // Discard first three bits
     }
     /* Disable test mode */
-    test_config[1] = fssel_input & ~0xE6;
-    int res_notest = i2c_reg_write_byte_dt(target_node, test_config[0], test_config[1]);
+    int res_notest = i2c_reg_write_byte_dt(target_node, shared.gyro_config, fssel_input);
     if(res_notest != 0)
     {
 	    LOG_ERR("Failed to disable tests!");
@@ -470,7 +412,7 @@ bool mpu6050_gyro_test(const struct i2c_dt_spec *target_node)
 
 bool mpu6050_accel_test(const struct i2c_dt_spec *target_node) 
 {
-    uint8_t test_config[2] = {shared.accel_config,(accel_input | 0xE0)};
+    uint8_t test_value = accel_input | 0xE0;
     uint8_t config_write;
     int registers[] = {selftest_addr.x, selftest_addr.y, selftest_addr.z};
     int register_size = sizeof(registers) / sizeof(registers[0]);
@@ -481,7 +423,7 @@ bool mpu6050_accel_test(const struct i2c_dt_spec *target_node)
     uint8_t test_bits[3];
     uint8_t raw_bits[3];
     
-    int res_test = i2c_reg_write_byte_dt(target_node, test_config[0], test_config[1]);
+    int res_test = i2c_reg_write_byte_dt(target_node, shared.accel_config, test_value);
     if(res_test != 0)
     {
 	    LOG_ERR("Failed to enable tests!");
@@ -506,8 +448,7 @@ bool mpu6050_accel_test(const struct i2c_dt_spec *target_node)
         test_bits[i] = (test_bits[i] >> 3) | extra_bits[i]; // merge bits
     }
     memset(extra_bits, 0, sizeof(extra_bits)); // Empty extra bit array
-    test_config[1] = accel_input & ~0xE6;
-    int res_notest = i2c_reg_write_byte_dt(target_node, test_config[0], test_config[1]);
+    int res_notest = i2c_reg_write_byte_dt(target_node, shared.accel_config, accel_input);
     if(res_notest != 0)
     {
 	    LOG_ERR("Failed to disable tests!");
@@ -527,6 +468,9 @@ bool mpu6050_accel_test(const struct i2c_dt_spec *target_node)
         raw_bits[i] = (raw_bits[i] >> 3) | extra_bits[i]; // merge bits
     }
 
+
+    i2c_reg_read_byte_dt(target_node, shared.accel_config, &config_write);
+    printk("Accelerometer config after test is %x\n", config_write);
 
     /*Calculate trim deviation for Accelometer */
     for(int i=0; i < register_size; i++)
