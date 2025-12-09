@@ -106,7 +106,7 @@ void resetConfusionMatrix(void)
 int argMin(float arr[])
 {
     int minIndex = 0;
-    for (int i = 0; i <= 6; i++) {
+    for (int i = 0; i <= 5; i++) {
         if (arr[i] < arr[minIndex]) {
             minIndex = i;
         }
