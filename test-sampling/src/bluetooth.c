@@ -102,7 +102,7 @@ int my_ble_send_gyro(struct Measurement val)
     }
 
 
-    /* Convert to Big-Endian (values make more sense)*/
+    /* Convert values to Big Endian for predictable value transmission behaviors */
     val.x = sys_cpu_to_be16(val.x);
     val.y = sys_cpu_to_be16(val.y);
     val.z = sys_cpu_to_be16(val.z);
@@ -117,6 +117,7 @@ int my_ble_send_accel(struct Measurement val)
         return -EACCES;
     }
 
+    /* Convert values to Big Endian for predictable value transmission behaviors */
     val.x = sys_cpu_to_be16(val.x);
     val.y = sys_cpu_to_be16(val.y);
     val.z = sys_cpu_to_be16(val.z);

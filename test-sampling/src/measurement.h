@@ -9,10 +9,4 @@ struct Measurement {
     int16_t z;
 };
 
-struct Accel {
-    float x;
-    float y;
-    float z;
-};
-
 #endif

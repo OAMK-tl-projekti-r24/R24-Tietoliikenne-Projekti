@@ -23,8 +23,8 @@ volatile uint16_t sample_buf[SAMPLE_BUF_SIZE];
 volatile int sample_count = 0;
 
 
-K_THREAD_STACK_DEFINE(send_data_stack, STACKSIZE);
-static struct k_thread send_data_thread_id;
+K_THREAD_STACK_DEFINE(data_stack, STACKSIZE);
+static struct k_thread data_thread_id;
 extern uint8_t counter;
 
 LOG_MODULE_REGISTER(testapp);
@@ -104,6 +104,8 @@ int main(void)
         {
         return 1;
         }
+
+        /* WARNING: sensor tests write into configuration registers and in its current state might affect read functionalities */
         /*
         if (!mpu6050_gyro_test(&dev_i2c1))
         {
@@ -131,19 +133,20 @@ int main(void)
         return 1;
         }*/
         
-        
+        /* BLE fails with the current MPU6050 interrupt definition of P1.10 */
         //k_work_init(&adv_work, adv_work_handler);
-	//advertising_start();
+	    //advertising_start();
 
+        /* Enable MPU6050 interrupt pin. Vital for preventing sample corruption from FIFO overflow */
         gpio_pin_configure_dt(&fifoint, GPIO_INPUT | GPIO_PULL_UP);
         gpio_pin_interrupt_configure_dt(&fifoint, GPIO_INT_EDGE_TO_INACTIVE);
         gpio_init_callback(&fifo_cb, readFIFO, BIT(fifoint.pin));
         gpio_add_callback(fifoint.port, &fifo_cb);
 
-        k_thread_create(&send_data_thread_id,
-                    send_data_stack,
+        k_thread_create(&data_thread_id,
+                    data_stack,
                     STACKSIZE,
-                    send_data_thread,
+                    data_thread,
                     NULL, NULL, NULL,
                     PRIORITY, 0, K_NO_WAIT);
 
