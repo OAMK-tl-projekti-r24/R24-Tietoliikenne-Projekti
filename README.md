@@ -53,7 +53,7 @@ The project consists of the following software/hardware components:
 
 ## Example samples and center points
 
-<img src="final_plog.png"/>
+<img src="final_plot.png"/>
 
 ## System Diagram
 
