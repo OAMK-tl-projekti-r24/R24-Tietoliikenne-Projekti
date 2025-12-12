@@ -14,11 +14,11 @@ const struct i2c_dt_spec *mpu_i2c_bus;
 bool mpu6050_init(const struct i2c_dt_spec *target_node) 
 {   
     uint8_t addr_data; // Used for reading the WHO_AM_I register (the fundamental device availability check)
-    uint8_t config_data;
-    uint8_t accel_data;
+    uint8_t config_data; // Used to check configuration register write validity
+    uint8_t accel_data; // Used to check accelerometer configuration after register write
     uint8_t power_state; // Used for checking correct write of power state (On)
     uint8_t fssel_selection = 0; // Selection of configuration with index number of fssel_options array
-    uint8_t accel_selection = 0;
+    uint8_t accel_selection = 0; // Selection of 
     bool power = false;
     int res;
 
