@@ -30,7 +30,7 @@ The project consists of the following software/hardware components:
 ### nRF5340DK
 
 - Clone this repository.
-- Open the "nrf-sampling" directory with VSCode.
+- Open the "sampling" directory with VSCode.
 - Set the build configuration with the nRF Connect plugin (use Sysbuild).
 - Ensure the the MPU6050 pin VCC is connected to a 3.3 volt power supply, SCL is connected to P1.03, SDA is connected to P1.02, INT is connected to P1.10 and AD0 is grounded to ensure address 0x68.
 - Build and flash with the nRF Connect plugin
